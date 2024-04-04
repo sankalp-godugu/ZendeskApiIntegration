@@ -2,7 +2,7 @@
 {
     public class GroupMembershipList
     {
-        public List<GroupMembership> group_memberships = new();
+        public List<GroupMembership> group_memberships = [];
     }
 
     public class GroupMembership

@@ -3,7 +3,7 @@
     // Root myDeserializedClass = JsonConvert.DeserializeObject<Root>(myJsonResponse);
     public class UpdateManyTicketsRequest
     {
-        public List<Ticket> tickets = new();
+        public List<Ticket> tickets = [];
     }
 
     public class Ticket

@@ -1,6 +1,4 @@
 ﻿using Microsoft.Extensions.Logging;
-using ZendeskApiIntegration.Model.Requests;
-using ZendeskApiIntegration.Model.Responses;
 
 namespace ZendeskApiIntegration.App.Interfaces
 {

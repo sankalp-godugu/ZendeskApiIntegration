@@ -1,5 +1,4 @@
 ﻿using AutoMapper;
-using Microsoft.Extensions.Configuration;
 
 namespace ZendeskApiIntegration.Utilities
 {

@@ -9,37 +9,37 @@ using ZendeskApiIntegration.TriggerUtilities;
 
 namespace ZendeskApiIntegration
 {
-    public class Functions(IDataLayer dataLayer, IConfiguration config, IZendeskClientService zendeskClientService)
+    public class Functions(IDataLayer dataLayer, IConfiguration config, IZendeskClientService zendeskClientService, ILogger<Functions> log)
     {
         [Function("BulkCreateGroupMemberships")]
-        public async Task<IActionResult> BulkCreateGroupMemberships([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post")] HttpRequest req, ILogger log)
+        public async Task<IActionResult> BulkCreateGroupMemberships([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post")] HttpRequest req)
         {
             log.LogInformation("C# HTTP trigger function processed a request.");
-            await ZendeskApiUtilities.ProcessZendeskContacts(dataLayer, config, zendeskClientService, log);
+            _ = await ZendeskApiUtilities.ProcessZendeskContacts(dataLayer, config, zendeskClientService, log);
             return new OkObjectResult("Welcome to Azure Functions!");
         }
 
         [Function("BulkDeleteTickets")]
-        public async Task<IActionResult> BulkDeleteTickets([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post")] HttpRequest req, ILogger log)
+        public async Task<IActionResult> BulkDeleteTickets([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post")] HttpRequest req)
         {
             log.LogInformation("C# HTTP trigger function processed a request.");
-            await ZendeskApiUtilities.ProcessZendeskContacts(dataLayer, config, zendeskClientService, log);
+            _ = await ZendeskApiUtilities.ProcessZendeskContacts(dataLayer, config, zendeskClientService, log);
             return new OkObjectResult("Welcome to Azure Functions!");
         }
 
         [Function("BulkMoveTickets")]
-        public async Task<IActionResult> BulkMoveTickets([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post")] HttpRequest req, ILogger log)
+        public async Task<IActionResult> BulkMoveTickets([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post")] HttpRequest req)
         {
             log.LogInformation("C# HTTP trigger function processed a request.");
-            await ZendeskApiUtilities.ProcessZendeskContacts(dataLayer, config, zendeskClientService, log);
+            _ = await ZendeskApiUtilities.ProcessZendeskContacts(dataLayer, config, zendeskClientService, log);
             return new OkObjectResult("Welcome to Azure Functions!");
         }
 
         [Function("BulkSuspendUsers")]
-        public async Task<IActionResult> BulkSuspendUsers([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post")] HttpRequest req, ILogger log)
+        public async Task<IActionResult> BulkSuspendUsers([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post")] HttpRequest req)
         {
             log.LogInformation("C# HTTP trigger function processed a request.");
-            await ZendeskApiUtilities.ProcessZendeskContacts(dataLayer, config, zendeskClientService, log);
+            _ = await ZendeskApiUtilities.ProcessZendeskContacts(dataLayer, config, zendeskClientService, log);
             return new OkObjectResult("Welcome to Azure Functions!");
         }
     }

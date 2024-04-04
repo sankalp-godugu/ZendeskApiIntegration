@@ -1,6 +1,4 @@
 ﻿using Microsoft.Extensions.Logging;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 
 namespace ZendeskApiIntegration.DataLayer.Interfaces
 {

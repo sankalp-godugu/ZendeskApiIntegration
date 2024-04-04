@@ -18,13 +18,9 @@ namespace ZendeskApiIntegration.App.Services
     {
         #region Public Methods
 
-        #endregion
-
-        #region Private Methods
-
         private HttpClient GetZendeskHttpClient()
         {
-            return httpClientFactory.CreateClient("Zendesk");
+            return httpClientFactory.CreateClient("ZD");
         }
 
         private async Task<string> GetAuthToken()
@@ -61,7 +57,7 @@ namespace ZendeskApiIntegration.App.Services
         public async Task CreateGroupMemberships(ILogger logger)
         {
             // Main
-            using HttpClient client = httpClientFactory.CreateClient("Zendesk");
+            using HttpClient client = httpClientFactory.CreateClient("ZD");
             client.DefaultRequestHeaders.Accept.Clear();
             client.DefaultRequestHeaders.Accept.Add(
                 new MediaTypeWithQualityHeaderValue("application/vnd.github.v3+json"));
@@ -102,7 +98,7 @@ namespace ZendeskApiIntegration.App.Services
                     }
 
                     apiUrl = ConstructApiUrl(users);
-                    UsersResponse result = await GetUsers(apiUrl);
+                    UsersResponse? result = await GetUsers();
                     if (result?.users.Count > 0)
                     {
                         GroupMembershipList groupMemberships = ConstructBulkGroupMembershipAssignmentJSON(result.users, groupId);
@@ -119,7 +115,7 @@ namespace ZendeskApiIntegration.App.Services
         {
             string searchQuery = "search/count?query=type:ticket group:18731646602263 requester:MEPtoZendesk@nationsbenefits.com created<=2023-12-14 -status:solved";
             PeriodicTimer timer = new(TimeSpan.FromSeconds(1));
-            HttpClient client = httpClientFactory.CreateClient("Zendesk");
+            HttpClient client = httpClientFactory.CreateClient("ZD");
             HttpResponseMessage response = await client.GetAsync(searchQuery);
             string result = await response.Content.ReadAsStringAsync();
             if (response.IsSuccessStatusCode)
@@ -184,7 +180,7 @@ namespace ZendeskApiIntegration.App.Services
             while (await timer.WaitForNextTickAsync())
             {
                 // HTTP
-                using HttpClient client = httpClientFactory.CreateClient("Zendesk");
+                using HttpClient client = httpClientFactory.CreateClient("ZD");
                 client.DefaultRequestHeaders.Add("Accept", "application/json");
                 client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.ASCII.GetBytes($"")));
 
@@ -247,23 +243,36 @@ namespace ZendeskApiIntegration.App.Services
 
         public async Task SuspendUsers(ILogger logger)
         {
-            var result = GetUsers(ConstructApiUrl());
-            var temp = "";
+            UsersResponse usersResponse = await GetUsers();
+            foreach (User user in usersResponse.users)
+            {
+                if (user.LastLoginAt != null)
+                {
+
+                }
+            }
         }
+
+        #endregion
+
+        #region Private Methods
 
         private static string ConstructApiUrl()
         {
             return "users/search?query=type:user";
         }
 
-        async Task<UsersResponse?> GetUsers(string url)
+        private async Task<UsersResponse> GetUsers()
         {
             try
             {
-                HttpResponseMessage response = await httpClientFactory.CreateClient("Zendesk").GetAsync(url);
-                string result = await response.Content.ReadAsStringAsync();
-                //File.WriteAllText(@"C:\Users\Sankalp.Godugu\OneDrive - NationsBenefits\Documents\Business\Zendesk Integration\Zendesk\tempFile.json", result);
-                return response.IsSuccessStatusCode ? JsonConvert.DeserializeObject<UsersResponse>(result) : null;
+                HttpClient client = httpClientFactory.CreateClient("ZD");
+                HttpResponseMessage response = await client.GetAsync("users/search?query=type:user ");
+                if (response.IsSuccessStatusCode)
+                {
+                    string result = await response.Content.ReadAsStringAsync();
+                    return JsonConvert.DeserializeObject<UsersResponse>(result);
+                }
             }
             catch (Exception ex)
             {
@@ -273,9 +282,11 @@ namespace ZendeskApiIntegration.App.Services
             return null;
         }
 
-        private static string ReadCsv() =>
+        private static string ReadCsv()
+        {
             //System.Console.WriteLine("Enter full path of Csv file: ");
-            @"C:\Users\Sankalp.Godugu\OneDrive - NationsBenefits\Documents\Business\Zendesk Integration\Mini Surge 3.27 & 3.28.csv";//Console.ReadLine();
+            return @"C:\Users\Sankalp.Godugu\OneDrive - NationsBenefits\Documents\Business\Zendesk Integration\Mini Surge 3.27 & 3.28.csv";//Console.ReadLine();
+        }
 
         private static IEnumerable<User> MapCsvToListOfUsers(string csvPath, int skip)
         {
@@ -285,7 +296,7 @@ namespace ZendeskApiIntegration.App.Services
             .Select(col => col.Split(','))
             .Select(col => new User
             {
-                email = col[0]
+                Email = col[0]
             });
             return users;
         }
@@ -296,7 +307,7 @@ namespace ZendeskApiIntegration.App.Services
             string query = string.Empty;
             foreach (User user in users)
             {
-                query += "user:" + user.email + " ";
+                query += "user:" + user.Email + " ";
             }
             query = query.Trim();
             return baseUrl + query;
@@ -307,7 +318,7 @@ namespace ZendeskApiIntegration.App.Services
             GroupMembershipList groupMembershipList = new();
             foreach (User user in users)
             {
-                if (user.role_type is not null)
+                if (user.RoleType is not null)
                 {
                     groupMembershipList.group_memberships.Add(new GroupMembership
                     {
@@ -326,12 +337,14 @@ namespace ZendeskApiIntegration.App.Services
 
             string json = JsonConvert.SerializeObject(groupMembershipList);
             StringContent sc = new(json, Encoding.UTF8, "application/json");
-            HttpResponseMessage response = await httpClientFactory.CreateClient("Zendesk").PostAsync("https://nationsbenefits.zendesk.com/api/v2/group_memberships/create_many", sc);
-            string result = await response.Content.ReadAsStringAsync();
+            HttpResponseMessage response = await httpClientFactory.CreateClient("ZD").PostAsync("https://nationsbenefits.zendesk.com/api/v2/group_memberships/create_many", sc);
+            _ = await response.Content.ReadAsStringAsync();
 
             //File.WriteAllText(@"C:\Users\Sankalp.Godugu\OneDrive - NationsBenefits\Documents\Business\Zendesk Integration\Zendesk\tempFile2.json", result);
             return response.IsSuccessStatusCode ? "success" : "error";
         }
+
+        
 
         #endregion
     }
