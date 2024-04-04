@@ -1,0 +1,14 @@
+{
+  "profiles": {
+    "ZendeskApiIntegration": {
+      "commandName": "Project",
+      "commandLineArgs": "--port 7053"
+    },
+    "Docker": {
+      "commandName": "Docker",
+      "launchUrl": "{Scheme}://{ServiceHost}:{ServicePort}",
+      "httpPort": 34085,
+      "useSSL": false
+    }
+  }
+}

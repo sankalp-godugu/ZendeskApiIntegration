@@ -1,0 +1,46 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.8.34408.163
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ZendeskApiIntegration", "ZendeskApiIntegration\ZendeskApiIntegration.csproj", "{00893A87-05BF-4468-881D-53FE256B32BB}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{B01F24BA-AD94-4E2D-9D7D-1CBB6DA01639}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{C540EBA5-69E4-433F-B327-70390E0C03A8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ZendeskApiIntegration.Tests", "ZendeskApiIntegration.Tests\ZendeskApiIntegration.Tests.csproj", "{BA995A27-A759-49E0-AA40-04D11853880A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ZendeskApiIntegration.Tests.Integration", "ZendeskApiIntegration.Tests.Integration\ZendeskApiIntegration.Tests.Integration.csproj", "{6AB1CB67-547C-4442-B335-6C618E28AD95}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{00893A87-05BF-4468-881D-53FE256B32BB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{00893A87-05BF-4468-881D-53FE256B32BB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{00893A87-05BF-4468-881D-53FE256B32BB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{00893A87-05BF-4468-881D-53FE256B32BB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BA995A27-A759-49E0-AA40-04D11853880A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BA995A27-A759-49E0-AA40-04D11853880A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BA995A27-A759-49E0-AA40-04D11853880A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BA995A27-A759-49E0-AA40-04D11853880A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6AB1CB67-547C-4442-B335-6C618E28AD95}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6AB1CB67-547C-4442-B335-6C618E28AD95}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6AB1CB67-547C-4442-B335-6C618E28AD95}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6AB1CB67-547C-4442-B335-6C618E28AD95}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{00893A87-05BF-4468-881D-53FE256B32BB} = {B01F24BA-AD94-4E2D-9D7D-1CBB6DA01639}
+		{BA995A27-A759-49E0-AA40-04D11853880A} = {C540EBA5-69E4-433F-B327-70390E0C03A8}
+		{6AB1CB67-547C-4442-B335-6C618E28AD95} = {C540EBA5-69E4-433F-B327-70390E0C03A8}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {787232B9-6E30-48A5-B557-9F9CA5AC6E59}
+	EndGlobalSection
+EndGlobal
