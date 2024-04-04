@@ -5,15 +5,15 @@ namespace ZendeskApiIntegration.Utilities
 {
     public class MapperConfig
     {
-        public static Mapper InitializeAutomapper(IConfiguration configuration)
+        public static Mapper InitializeAutomapper()
         {
             //Provide all the Mapping Configuration
-            MapperConfiguration config = new(cfg =>
+            MapperConfiguration mapperConfig = new(cfg =>
             {
             });
 
             //Create an Instance of Mapper and return that Instance
-            Mapper mapper = new(config);
+            Mapper mapper = new(mapperConfig);
             return mapper;
         }
     }

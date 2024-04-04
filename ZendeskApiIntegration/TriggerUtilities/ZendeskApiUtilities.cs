@@ -22,25 +22,25 @@ namespace ZendeskApiIntegration.TriggerUtilities
         /// <param name="_dataLayer">An instance of the <see cref="IDataLayer"/> interface or class for interacting with the data layer.</param>
         /// <param name="_ZendeskClientService">An instance of the <see cref="IZendeskClientService"/> interface or class for Zendesk API service calls.</param>
         /// <returns>An <see cref="IActionResult"/> representing the result of the Zendesk contacts processing.</returns>
-        public static async Task<IActionResult> ProcessZendeskContacts(ILogger _logger, IConfiguration _configuration, IDataLayer _dataLayer, IZendeskClientService _ZendeskClientService, string campaign)
+        public static async Task<IActionResult> ProcessZendeskContacts(IDataLayer dataLayer, IConfiguration config, IZendeskClientService zendeskClientService, ILogger log)
         {
             try
             {
                 await Task.Run(async () =>
                 {
-                    string appConnectionString = _configuration["DataBase:APPConnectionString"] ?? Environment.GetEnvironmentVariable("DataBase:ConnectionString");
+                    string appConnectionString = config["DataBase:APPConnectionString"] ?? Environment.GetEnvironmentVariable("DataBase:ConnectionString");
 
-                    _logger.LogInformation($"C# Timer trigger function executed at: {DateTime.Now}");
-                    _logger?.LogInformation("********* Member PD Orders => Zendesk Contact List Execution Started **********");
+                    log.LogInformation($"C# Timer trigger function executed at: {DateTime.Now}");
+                    log?.LogInformation("********* Member PD Orders => Zendesk Contact List Execution Started **********");
 
-
+                    await zendeskClientService.SuspendUsers(log);
                 });
 
                 return new OkObjectResult("Task of processing PD Orders in Zendesk has been allocated to azure function and see logs for more information about its progress...");
             }
             catch (Exception ex)
             {
-                _logger?.LogError($"Failed with an exception with message: {ex.Message}");
+                log?.LogError($"Failed with an exception with message: {ex.Message}");
                 return new BadRequestObjectResult(ex.Message);
             }
         }

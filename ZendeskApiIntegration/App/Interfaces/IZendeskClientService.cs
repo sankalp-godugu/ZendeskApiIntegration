@@ -14,27 +14,27 @@ namespace ZendeskApiIntegration.App.Interfaces
         /// </summary>
         /// <param name="logger">Logger.<see cref="ILogger"/></param>
         /// <returns>Returns the list of contacts from Zendesk.</returns>
-        public Task CreateGroupMemberships(string lang, ILogger logger);
+        public Task CreateGroupMemberships(ILogger logger);
 
         /// <summary>
         /// Get contact list export Uri from Zendesk asychronously.
         /// </summary>
         /// <param name="logger">Logger.<see cref="ILogger"/></param>
         /// <returns>Returns the list of contacts from Zendesk.</returns>
-        public Task SuspendUsers(string lang, ILogger logger);
+        public Task SuspendUsers(ILogger logger);
 
         /// <summary>
         /// Get contact list download Url from Zendesk asychronously.
         /// </summary>
         /// <param name="logger">Logger.<see cref="ILogger"/></param>
         /// <returns>Returns the list of contacts from Zendesk.</returns>
-        public Task MoveTickets(string uri, string lang, ILogger logger);
+        public Task MoveTickets(ILogger logger);
 
         /// <summary>
         /// Get list of contacts from Zendesk asychronously.
         /// </summary>
         /// <param name="logger">Logger.<see cref="ILogger"/></param>
         /// <returns>Returns the list of contacts from Zendesk.</returns>
-        public Task DeleteTickets(string uri, ILogger logger);
+        public Task DeleteTickets(ILogger logger);
     }
 }

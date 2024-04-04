@@ -22,7 +22,7 @@ namespace ZendeskApiIntegration.DataLayer.Services
         public async Task<List<T>> ExecuteReader<T>(string procedureName, Dictionary<string, object> parameters, string connectionString, ILogger logger)
         {
             logger.LogInformation($"Started calling stored procedure {procedureName} with parameters: {string.Join(", ", parameters.Select(p => $"{p.Key} = {p.Value}"))}");
-            List<T> list = new();
+            List<T> list = [];
             using (SqlConnection sqlConnection = new(connectionString))
             {
                 await sqlConnection.OpenAsync();
@@ -36,7 +36,7 @@ namespace ZendeskApiIntegration.DataLayer.Services
 
                     if (parameters.Count > 0)
                     {
-                        sqlCommand.Parameters.AddRange(GetSqlParameters(parameters).ToArray());
+                        sqlCommand.Parameters.AddRange([.. GetSqlParameters(parameters)]);
                     }
                     SqlDataReader dataReader = await sqlCommand.ExecuteReaderAsync();
 
@@ -135,9 +135,9 @@ namespace ZendeskApiIntegration.DataLayer.Services
         /// <typeparam name="T">The type of the object to return.</typeparam>
         /// <param name="dataReader">The DataReader.</param>
         /// <returns>Returns the parsed object from the data reader.</returns>
-        private static List<T> DataReaderMapToList<T>(IDataReader dataReader, ILogger logger)
+        private static List<T> DataReaderMapToList<T>(SqlDataReader dataReader, ILogger logger)
         {
-            List<T> list = new();
+            List<T> list = [];
             try
             {
                 T obj = default!;
@@ -170,7 +170,7 @@ namespace ZendeskApiIntegration.DataLayer.Services
         /// </summary>
         /// <param name="parameters">The dictionary of SQL parameters.</param>
         /// <returns>Returns the collection of sql parameters.</returns>
-        private List<SqlParameter> GetSqlParameters(Dictionary<string, object> parameters)
+        private static List<SqlParameter> GetSqlParameters(Dictionary<string, object> parameters)
         {
             return parameters.Select(sp => new SqlParameter(sp.Key, sp.Value)).ToList();
         }
