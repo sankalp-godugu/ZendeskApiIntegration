@@ -1,4 +1,4 @@
-﻿namespace BulkMoveTickets.Responses
+﻿namespace ZendeskApiIntegration.Model.Responses
 {
     public class Result
     {

@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace ZendeskContactsProcessJob.DataLayer.Interfaces
+namespace ZendeskApiIntegration.DataLayer.Interfaces
 {
     // Interface for data layer.
     public interface IDataLayer

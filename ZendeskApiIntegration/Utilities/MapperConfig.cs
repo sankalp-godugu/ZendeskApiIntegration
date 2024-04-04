@@ -1,7 +1,7 @@
 ﻿using AutoMapper;
 using Microsoft.Extensions.Configuration;
 
-namespace ZendeskContactsProcessJob.Utilities
+namespace ZendeskApiIntegration.Utilities
 {
     public class MapperConfig
     {

@@ -1,16 +1,11 @@
-﻿using BulkCreateGroupMemberships.Requests;
-using BulkCreateGroupMemberships.Responses;
-using BulkMoveTickets.Requests;
-using Microsoft.AspNetCore.Authentication.BearerToken;
+﻿using Microsoft.AspNetCore.Authentication.BearerToken;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
-using System.Globalization;
-using System.Net.Http.Headers;
-using ZendeskContactsProcessJob.Utilities;
-using ZendeskContactsProcessJob.ZendeskLayer.Interfaces;
+using ZendeskApiIntegration.App.Interfaces;
+using ZendeskApiIntegration.Utilities;
 
-namespace ZendeskContactsProcessJob.ZendeskLayer.Services
+namespace ZendeskApiIntegration.App.Services
 {
     /// <summary>
     /// Zendesk client service.
@@ -22,7 +17,7 @@ namespace ZendeskContactsProcessJob.ZendeskLayer.Services
         /// <summary>
         /// Initiate the export for Zendesk contact list async
         /// </summary>
-        
+
 
         #endregion
 
@@ -63,7 +58,7 @@ namespace ZendeskContactsProcessJob.ZendeskLayer.Services
 
         private async Task<string> GetAuthToken()
         {
-            using HttpClient httpClient =  GetZendeskHttpClient();
+            using HttpClient httpClient = GetZendeskHttpClient();
             string tokenUrl = config[ConfigConstants.TokenUrlKey] ?? Environment.GetEnvironmentVariable(ConfigConstants.TokenUrlKey);
             Uri tokenUri = new(tokenUrl);
             Dictionary<string, string> form = new()
@@ -86,35 +81,34 @@ namespace ZendeskContactsProcessJob.ZendeskLayer.Services
             Environment.SetEnvironmentVariable("token", accessTokenResponse.AccessToken);
         }
 
-        private static string RetrieveCachedToken()
+        private string RetrieveCachedToken()
         {
             //In a real-world application, we should retrieve the token from a cache service.
             return Environment.GetEnvironmentVariable("token");
         }
 
-        public Task<UsersResponse> GetUsers(string filePath)
+        public async Task CreateGroupMemberships(string lang, ILogger logger)
         {
-            throw new NotImplementedException();
+            BulkCreateGroupMemberships bcgm = new(httpClientFactory);
+            await bcgm.Initialize();
         }
 
-        public Task<GroupMembershipList> CreateGroupMemberships(string lang, ILogger logger)
+        public async Task MoveTickets(string uri, string lang, ILogger logger)
         {
-            throw new NotImplementedException();
+            BulkMoveTickets bmt = new(httpClientFactory);
+            await bmt.Initialize();
         }
 
-        public Task<Ticket> GetTickets(string lang, ILogger logger)
+        public async Task DeleteTickets(string uri, ILogger logger)
         {
-            throw new NotImplementedException();
+            BulkDeleteTickets bdt = new(httpClientFactory);
+            await bdt.Initialize();
         }
 
-        public Task<Ticket> UpdateTickets(string uri, string lang, ILogger logger)
+        async Task IZendeskClientService.SuspendUsers(string lang, ILogger logger)
         {
-            throw new NotImplementedException();
-        }
-
-        public Task<long> DeleteTickets(string uri, ILogger logger)
-        {
-            throw new NotImplementedException();
+            BulkSuspendUsers bsu = new(httpClientFactory);
+            await bsu.Initialize();
         }
 
         #endregion

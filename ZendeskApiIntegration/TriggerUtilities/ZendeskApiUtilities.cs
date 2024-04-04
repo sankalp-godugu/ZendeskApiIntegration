@@ -3,10 +3,10 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System.Globalization;
 using System.Net;
-using ZendeskContactsProcessJob.DataLayer.Interfaces;
-using ZendeskContactsProcessJob.ZendeskLayer.Interfaces;
+using ZendeskApiIntegration.App.Interfaces;
+using ZendeskApiIntegration.DataLayer.Interfaces;
 
-namespace ZendeskContactsProcessJob.TriggerUtilities
+namespace ZendeskApiIntegration.TriggerUtilities
 {
     /// <summary>
     /// Zendesk utilities.
@@ -33,7 +33,7 @@ namespace ZendeskContactsProcessJob.TriggerUtilities
                     _logger.LogInformation($"C# Timer trigger function executed at: {DateTime.Now}");
                     _logger?.LogInformation("********* Member PD Orders => Zendesk Contact List Execution Started **********");
 
-                    
+
                 });
 
                 return new OkObjectResult("Task of processing PD Orders in Zendesk has been allocated to azure function and see logs for more information about its progress...");

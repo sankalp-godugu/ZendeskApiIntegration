@@ -1,4 +1,4 @@
-﻿namespace BulkMoveTickets.Responses
+﻿namespace ZendeskApiIntegration.Model.Responses
 {
     // Root myDeserializedClass = JsonConvert.DeserializeObject<Root>(myJsonResponse);
     public class JobStatus

@@ -1,4 +1,4 @@
-﻿namespace BulkCreateGroupMemberships.Responses
+﻿namespace ZendeskApiIntegration.Model.Responses
 {
     public class UsersResponse
     {

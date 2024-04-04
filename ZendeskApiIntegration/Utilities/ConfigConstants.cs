@@ -1,4 +1,4 @@
-﻿namespace ZendeskContactsProcessJob.Utilities
+﻿namespace ZendeskApiIntegration.Utilities
 {
     public class ConfigConstants
     {

@@ -2,9 +2,9 @@
 using Microsoft.Extensions.Logging;
 using System.Data;
 using System.Reflection;
-using ZendeskContactsProcessJob.DataLayer.Interfaces;
+using ZendeskApiIntegration.DataLayer.Interfaces;
 
-namespace ZendeskContactsProcessJob.DataLayer.Services
+namespace ZendeskApiIntegration.DataLayer.Services
 {
     /// <summary>
     /// Data Layer.

@@ -1,4 +1,4 @@
-﻿namespace BulkCreateGroupMemberships.Requests
+﻿namespace ZendeskApiIntegration.Model.Requests
 {
     public class GroupMembershipList
     {
