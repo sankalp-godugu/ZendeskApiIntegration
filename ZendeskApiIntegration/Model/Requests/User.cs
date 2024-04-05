@@ -1,11 +1,13 @@
-using Newtonsoft.Json.Serialization;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Serialization;
+
+namespace ZendeskApiIntegration.Model.Requests;
 
 public class User
 {
     public User()
     {
-        var settings = new JsonSerializerSettings
+        JsonSerializerSettings settings = new()
         {
             ContractResolver = new DefaultContractResolver
             {
@@ -20,7 +22,7 @@ public class User
     public string? Name { get; set; }
     public string? Email { get; set; }
 
-    [JsonProperty(PropertyName ="created_at")]
+    [JsonProperty(PropertyName = "created_at")]
     public string? CreatedAt { get; set; }
 
     [JsonProperty(PropertyName = "updated_at")]
@@ -37,7 +39,7 @@ public class User
     [JsonProperty(PropertyName = "shared_phone_number")]
     public string? SharedPhoneNumber { get; set; }
 
-    public string? Photo { get; set; }
+    public Photo? Photo { get; set; }
 
     [JsonProperty(PropertyName = "locale_id")]
     public int LocaleId { get; set; }
@@ -54,16 +56,16 @@ public class User
     [JsonProperty(PropertyName = "external_id")]
     public string? ExternalId { get; set; }
 
-    public List<object> Tags { get; set; }
+    public List<string>? Tags { get; set; }
 
     public string? Alias { get; set; }
 
-    public bool Active { get; set; }
+    public bool? Active { get; set; }
 
-    public bool Shared { get; set; }
+    public bool? Shared { get; set; }
 
     [JsonProperty(PropertyName = "shared_agent")]
-    public bool SharedAgent { get; set; }
+    public bool? SharedAgent { get; set; }
 
     [JsonProperty(PropertyName = "last_login_at")]
     public string? LastLoginAt { get; set; }
@@ -83,34 +85,72 @@ public class User
     [JsonProperty(PropertyName = "custom_role_id")]
     public long? CustomRoleId { get; set; }
 
-    public bool Moderator { get; set; }
+    public bool? Moderator { get; set; }
 
     [JsonProperty(PropertyName = "ticket_restriction")]
     public string? TicketRestriction { get; set; }
 
     [JsonProperty(PropertyName = "only_private_comments")]
-    public bool OnlyPrivateComments { get; set; }
+    public bool? OnlyPrivateComments { get; set; }
 
     [JsonProperty(PropertyName = "restricted_agent")]
-    public bool RestrictedAgent { get; set; }
-
-    public bool Suspended { get; set; }
+    public bool? RestrictedAgent { get; set; }
+    
+    public bool? Suspended { get; set; }
 
     [JsonProperty(PropertyName = "chat_only")]
-    public bool ChatOnly { get; set; }
+    public bool? ChatOnly { get; set; }
 
     [JsonProperty(PropertyName = "default_group_id")]
     public long? DefaultGroupId { get; set; }
 
     [JsonProperty(PropertyName = "report_csv")]
-    public bool ReportCsv { get; set; }
+    public bool? ReportCsv { get; set; }
 
     [JsonProperty(PropertyName = "user_fields")]
-    public UserFields UserFields { get; set; }
+    public UserFields? UserFields { get; set; }
 }
 
 public class UserFields
 {
     public string? Department { get; set; }
     public string? Title { get; set; }
+}
+
+public class MediaItem
+{
+    public string? Url { get; set; }
+    public string? Id { get; set; }
+
+    [JsonProperty("file_name")]
+    public string? FileName { get; set; }
+
+    [JsonProperty("content_url")]
+    public string? ContentUrl { get; set; }
+
+    [JsonProperty("mapped_content_url")]
+    public string? MappedContentUrl { get; set; }
+
+    [JsonProperty("content_type")]
+    public string? ContentType { get; set; }
+
+    public string? Size { get; set; }
+
+    public string? Width { get; set; }
+
+    public string? Height { get; set; }
+
+    public bool? Inline { get; set; }
+
+    public bool? Deleted { get; set; }
+}
+
+public class Photo : MediaItem
+{
+    public required IEnumerable<Thumbnail> Thumbnails { get; set; }
+}
+
+public class Thumbnail : MediaItem
+{
+    // No additional properties specific to Thumbnail class
 }

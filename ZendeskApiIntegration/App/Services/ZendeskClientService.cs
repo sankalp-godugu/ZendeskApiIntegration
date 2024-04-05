@@ -5,6 +5,7 @@ using Newtonsoft.Json;
 using System.Net.Http.Headers;
 using System.Text;
 using ZendeskApiIntegration.App.Interfaces;
+using ZendeskApiIntegration.Model;
 using ZendeskApiIntegration.Model.Requests;
 using ZendeskApiIntegration.Model.Responses;
 using ZendeskApiIntegration.Utilities;
@@ -98,10 +99,10 @@ namespace ZendeskApiIntegration.App.Services
                     }
 
                     apiUrl = ConstructApiUrl(users);
-                    UsersResponse? result = await GetUsers();
-                    if (result?.users.Count > 0)
+                    UsersResponse? result = (UsersResponse?)await GetUsers();
+                    if (result?.Users.Count > 0)
                     {
-                        GroupMembershipList groupMemberships = ConstructBulkGroupMembershipAssignmentJSON(result.users, groupId);
+                        GroupMembershipList groupMemberships = ConstructBulkGroupMembershipAssignmentJSON(result.Users, groupId);
                         if (groupMemberships.group_memberships.Count > 0)
                         {
                             _ = await BulkCreateMemberships(groupMemberships);
@@ -243,12 +244,19 @@ namespace ZendeskApiIntegration.App.Services
 
         public async Task SuspendUsers(ILogger logger)
         {
-            UsersResponse usersResponse = await GetUsers();
-            foreach (User user in usersResponse.users)
-            {
-                if (user.LastLoginAt != null)
-                {
+            IEnumerable<User> users = await GetUsers();
+            List<User> usersNeverLoggedIn = [];
+            List<User> usersNotLoggedInPastMonth = [];
 
+            foreach (User user in users)
+            {
+                if (user.LastLoginAt is null)
+                {
+                    usersNeverLoggedIn.Add(user);
+                }
+                else
+                {
+                    usersNotLoggedInPastMonth.Add(user);
                 }
             }
         }
@@ -262,24 +270,55 @@ namespace ZendeskApiIntegration.App.Services
             return "users/search?query=type:user";
         }
 
-        private async Task<UsersResponse> GetUsers()
+        private async Task<IEnumerable<User>> GetUsers()
         {
             try
             {
+                int? countUsers = await GetCountUsers(httpClientFactory);
+                if (countUsers == null || countUsers == 0) return [];
+
+                List<User> users = [];
+                string date = DateTime.Today.AddMonths(-1).Date.ToShortDateString();
+
                 HttpClient client = httpClientFactory.CreateClient("ZD");
-                HttpResponseMessage response = await client.GetAsync("users/search?query=type:user ");
-                if (response.IsSuccessStatusCode)
+                List<Task<HttpResponseMessage>> tasks = [];
+
+                for (int page = 1; countUsers - (page * 100) > 0; page++)
                 {
-                    string result = await response.Content.ReadAsStringAsync();
-                    return JsonConvert.DeserializeObject<UsersResponse>(result);
+                    Task<HttpResponseMessage> task = client.GetAsync($"users/search.json?page={page}&query=type:user role:end-user&last_login_at<{date}");
+                    tasks.Add(task);
                 }
+
+                await Task.WhenAll(tasks);
+                foreach (var task in tasks)
+                {
+                    HttpResponseMessage response = await task;
+                    if (response.IsSuccessStatusCode)
+                    {
+                        string result = await response.Content.ReadAsStringAsync();
+                        UsersResponse? usersResponse = JsonConvert.DeserializeObject<UsersResponse>(result);
+                        lock (users)
+                        {
+                            users.AddRange(usersResponse is null ? [] : usersResponse.Users);
+                        }
+                    }
+                }
+                return users;
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex.Message);
+                await Console.Out.WriteLineAsync(ex.Message);
             }
-
             return null;
+        }
+
+        private static async Task<int?> GetCountUsers(IHttpClientFactory httpClientFactory)
+        {
+            HttpClient client = httpClientFactory.CreateClient("ZD");
+            HttpResponseMessage response = await client.GetAsync("users/count?role=end-user");
+            string result = await response.Content.ReadAsStringAsync();
+            CountUsersResponse countUsersResponse = JsonConvert.DeserializeObject<CountUsersResponse>(result);
+            return countUsersResponse?.Count?.Value;
         }
 
         private static string ReadCsv()
@@ -344,7 +383,7 @@ namespace ZendeskApiIntegration.App.Services
             return response.IsSuccessStatusCode ? "success" : "error";
         }
 
-        
+
 
         #endregion
     }
