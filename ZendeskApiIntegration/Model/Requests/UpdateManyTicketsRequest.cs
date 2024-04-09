@@ -5,10 +5,4 @@
     {
         public List<Ticket> tickets = [];
     }
-
-    public class Ticket
-    {
-        public long id { get; set; }
-        public long group_id { get; set; }
-    }
 }

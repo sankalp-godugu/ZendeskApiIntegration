@@ -20,7 +20,7 @@ namespace ZendeskApiIntegration.TriggerUtilities
         /// <param name="_dataLayer">An instance of the <see cref="IDataLayer"/> interface or class for interacting with the data layer.</param>
         /// <param name="_ZendeskClientService">An instance of the <see cref="IZendeskClientService"/> interface or class for Zendesk API service calls.</param>
         /// <returns>An <see cref="IActionResult"/> representing the result of the Zendesk contacts processing.</returns>
-        public static async Task<IActionResult> ProcessZendeskContacts(IDataLayer dataLayer, IConfiguration config, IZendeskClientService zendeskClientService, ILogger log)
+        public static async Task<IActionResult> ProcessZendeskTask(IDataLayer dataLayer, IConfiguration config, IZendeskClientService zendeskClientService, ILogger log)
         {
             try
             {
@@ -31,7 +31,8 @@ namespace ZendeskApiIntegration.TriggerUtilities
                     log.LogInformation($"C# Timer trigger function executed at: {DateTime.Now}");
                     log?.LogInformation("********* Member PD Orders => Zendesk Contact List Execution Started **********");
 
-                    await zendeskClientService.SuspendUsers(log);
+                    var listOfUsersToSuspend = await zendeskClientService.GetInactiveUsers(log);
+                    //await zendeskClientService.GetTicketsWithIncorrectAddress(log);
                 });
 
                 return new OkObjectResult("Task of processing PD Orders in Zendesk has been allocated to azure function and see logs for more information about its progress...");

@@ -1,10 +1,10 @@
 ﻿using Newtonsoft.Json;
-using ZendeskApiIntegration.Model.Requests;
 
 namespace ZendeskApiIntegration.Model.Responses
 {
     public class UsersResponse
     {
+        [JsonProperty("results")]
         public required List<User> Users { get; set; }
 
         [JsonProperty("next_page")]

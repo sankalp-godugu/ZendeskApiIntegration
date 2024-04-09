@@ -1,7 +1,7 @@
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 
-namespace ZendeskApiIntegration.Model.Requests;
+namespace ZendeskApiIntegration.Model;
 
 public class User
 {
@@ -95,7 +95,7 @@ public class User
 
     [JsonProperty(PropertyName = "restricted_agent")]
     public bool? RestrictedAgent { get; set; }
-    
+
     public bool? Suspended { get; set; }
 
     [JsonProperty(PropertyName = "chat_only")]

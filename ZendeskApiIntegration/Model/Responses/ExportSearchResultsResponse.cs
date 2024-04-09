@@ -1,39 +1,34 @@
-﻿namespace ZendeskApiIntegration.Model.Responses
+﻿using Newtonsoft.Json;
+
+namespace ZendeskApiIntegration.Model.Responses
 {
     // Root myDeserializedClass = JsonConvert.DeserializeObject<Root>(myJsonResponse);
-    public class Links
+    public class ExportSearchResultsResponse
     {
-        public required string next { get; set; }
-        public required string prev { get; set; }
+        [JsonProperty("results")]
+        public List<User>? Users { get; set; }
+        public List<Ticket>? Tickets { get; set; }
+
+        public string? Facets { get; set; }
+        public Meta? Meta { get; set; }
+        public Links? Links { get; set; }
     }
 
     public class Meta
     {
-        public required string after_cursor { get; set; }
-        public required string before_cursor { get; set; }
-        public required string has_more { get; set; }
+        [JsonProperty("has_more")]
+        public bool HasMore { get; set; }
+
+        [JsonProperty("after_cursor")]
+        public string? AfterCursor { get; set; }
+
+        [JsonProperty("before_cursor")]
+        public string? BeforeCursor { get; set; }
     }
 
-    public class ESRRResult
+    public class Links
     {
-        public required string created_at { get; set; }
-        public required string @default { get; set; }
-        public required string deleted { get; set; }
-        public required string description { get; set; }
-        public long id { get; set; }
-        public required string name { get; set; }
-        public required string result_type { get; set; }
-        public required string updated_at { get; set; }
-        public required string url { get; set; }
+        public string? Prev { get; set; }
+        public string? Next { get; set; }
     }
-
-    public class ExportSearchResultsResponse
-    {
-        public required string facets { get; set; }
-        public required Links links { get; set; }
-        public required Meta meta { get; set; }
-        public required List<ESRRResult> results { get; set; }
-    }
-
-
 }
