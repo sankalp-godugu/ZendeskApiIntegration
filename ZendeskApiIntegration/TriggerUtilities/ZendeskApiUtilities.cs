@@ -33,6 +33,8 @@ namespace ZendeskApiIntegration.TriggerUtilities
 
                     var listOfUsersToSuspend = await zendeskClientService.GetInactiveUsers(log);
                     //await zendeskClientService.GetTicketsWithIncorrectAddress(log);
+
+                    var emailResponse = await zendeskClientService.SendEmail(listOfUsersToSuspend, log);
                 });
 
                 return new OkObjectResult("Task of processing PD Orders in Zendesk has been allocated to azure function and see logs for more information about its progress...");

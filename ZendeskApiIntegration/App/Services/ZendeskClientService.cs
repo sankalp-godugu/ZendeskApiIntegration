@@ -2,7 +2,9 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using System.Net;
 using System.Net.Http.Headers;
+using System.Net.Mail;
 using System.Text;
 using ZendeskApiIntegration.App.Interfaces;
 using ZendeskApiIntegration.Model;
@@ -463,7 +465,45 @@ namespace ZendeskApiIntegration.App.Services
             return response.IsSuccessStatusCode ? "success" : "error";
         }
 
+        private async Task SendEmail(IEnumerable<User> users)
+        {
+            // SMTP server settings
+            string smtpServer = "smtp.office365.com";
+            int smtpPort = 587; // or any other port your SMTP server uses
+            string smtpUsername = "your_smtp_username";
+            string smtpPassword = "your_smtp_password";
 
+            // Sender and recipient email addresses
+            string fromAddress = "sankalp.godugu@nationsbenefits.com";
+            string toAddress = "sankalp.godugu@nationsbenefits.com";
+
+            // Email content
+            string subject = "THIS IS A TEST - Zutomation User Suspension Automation";
+            string body = "THIS IS A TEST - Zutomation User Suspension Automation";
+
+            // Create a new SMTP client
+            using SmtpClient client = new(smtpServer, smtpPort);
+
+            // Enable SSL/TLS if required
+            client.EnableSsl = true;
+
+            // Set credentials (if authentication is required)
+            client.Credentials = new NetworkCredential(smtpUsername, smtpPassword);
+
+            // Create the email message
+            MailMessage message = new(fromAddress, toAddress, subject, body);
+
+            try
+            {
+                // Send the email
+                client.Send(message);
+                Console.WriteLine("Email sent successfully.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to send email: {ex.Message}");
+            }
+        }
 
         #endregion
     }
