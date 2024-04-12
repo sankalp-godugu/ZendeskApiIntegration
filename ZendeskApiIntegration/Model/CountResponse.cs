@@ -1,6 +1,4 @@
-﻿using Newtonsoft.Json;
-
-namespace ZendeskApiIntegration.Model
+﻿namespace ZendeskApiIntegration.Model
 {
     public class CountResponse
     {
@@ -8,11 +6,11 @@ namespace ZendeskApiIntegration.Model
         //public Count? Count { get; set; }
     }
 
-   /* public class Count
-    {
-        public int Value { get; set; }
+    /* public class Count
+     {
+         public int Value { get; set; }
 
-        [JsonProperty("refreshed_at")]
-        public string? RefreshedAt { get; set; }
-    }*/
+         [JsonProperty("refreshed_at")]
+         public string? RefreshedAt { get; set; }
+     }*/
 }

@@ -32,7 +32,7 @@ namespace ZendeskApiIntegration.TriggerUtilities
                     log?.LogInformation("********* Member PD Orders => Zendesk Contact List Execution Started **********");
 
                     await zendeskClientService.CreateGroupMemberships(log);
-                    var listOfUsersToSuspend = await zendeskClientService.GetInactiveUsers(log);
+                    IEnumerable<Model.User> listOfUsersToSuspend = await zendeskClientService.GetInactiveUsers(log);
                     await zendeskClientService.SendEmail(listOfUsersToSuspend, log);
 
                 });

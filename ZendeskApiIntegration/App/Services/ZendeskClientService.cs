@@ -291,7 +291,11 @@ namespace ZendeskApiIntegration.App.Services
                     {
                         result = await response.Content.ReadAsStringAsync();
                         exportSearchResultsResponse = JsonConvert.DeserializeObject<ExportSearchResultsResponse>(result);
-                        if (exportSearchResultsResponse is null || exportSearchResultsResponse.Tickets.Count < 1) continue;
+                        if (exportSearchResultsResponse is null || exportSearchResultsResponse.Tickets.Count < 1)
+                        {
+                            continue;
+                        }
+
                         lock (exportSearchResultsResponse)
                         {
                             tickets.AddRange(exportSearchResultsResponse.Tickets);
@@ -333,7 +337,11 @@ namespace ZendeskApiIntegration.App.Services
                 {
                     string result = await response.Content.ReadAsStringAsync();
                     exportSearchResultsResponse = JsonConvert.DeserializeObject<ExportSearchResultsResponse>(result);
-                    if (exportSearchResultsResponse is null || exportSearchResultsResponse.Users.Count < 1) return [];
+                    if (exportSearchResultsResponse is null || exportSearchResultsResponse.Users.Count < 1)
+                    {
+                        return [];
+                    }
+
                     lock (exportSearchResultsResponse)
                     {
                         users.AddRange(exportSearchResultsResponse.Users);
@@ -347,7 +355,11 @@ namespace ZendeskApiIntegration.App.Services
                     {
                         string result = await response.Content.ReadAsStringAsync();
                         exportSearchResultsResponse = JsonConvert.DeserializeObject<ExportSearchResultsResponse>(result);
-                        if (exportSearchResultsResponse is null || exportSearchResultsResponse.Users.Count < 1) continue;
+                        if (exportSearchResultsResponse is null || exportSearchResultsResponse.Users.Count < 1)
+                        {
+                            continue;
+                        }
+
                         lock (exportSearchResultsResponse)
                         {
                             users.AddRange(exportSearchResultsResponse.Users);
@@ -384,22 +396,22 @@ namespace ZendeskApiIntegration.App.Services
         {
             List<User> users = [];
 
-            using (var workbook = new XLWorkbook(filePath))
+            using (XLWorkbook workbook = new(filePath))
             {
-                var worksheet = workbook.Worksheet(sheetPos); // Assuming the data is in the first worksheet
+                IXLWorksheet worksheet = workbook.Worksheet(sheetPos); // Assuming the data is in the first worksheet
 
                 // Find the header row
-                var columns = worksheet.Row(1).CellsUsed().Select(c => c.Value.ToString()).ToList();
+                List<string> columns = worksheet.Row(1).CellsUsed().Select(c => c.Value.ToString()).ToList();
 
                 // Find the index of the "Email" column
                 string? emailColName = columns.FirstOrDefault(h => h.Contains("email", StringComparison.OrdinalIgnoreCase)) ?? throw new Exception("Email column not found in the Excel file.");
                 int emailColumnIndex = columns.IndexOf(emailColName);
-                
+
                 // Read data starting from the row after the header
-                var rows = worksheet.RowsUsed().Skip(1);
-                foreach (var row in rows)
+                IEnumerable<IXLRow> rows = worksheet.RowsUsed().Skip(1);
+                foreach (IXLRow? row in rows)
                 {
-                    var email = row.Cell(emailColumnIndex + 1).Value.ToString(); // Excel columns are 1-based
+                    string email = row.Cell(emailColumnIndex + 1).Value.ToString(); // Excel columns are 1-based
                     users.Add(new User { Email = email });
                 }
             }
@@ -436,9 +448,6 @@ namespace ZendeskApiIntegration.App.Services
 
         private async Task<string> BulkCreateMemberships(GroupMembershipList groupMembershipList)
         {
-            //HttpResponseMessage response = await client.PostAsJsonAsync("https://nationsbenefits.zendesk.com/api/v2/group_memberships/create_many", groupMembershipList);
-            //var result = await response.Content.ReadAsStringAsync();
-
             string json = JsonConvert.SerializeObject(groupMembershipList);
             StringContent sc = new(json, Encoding.UTF8, "application/json");
             HttpResponseMessage response = await httpClientFactory.CreateClient("ZD").PostAsync("https://nationsbenefits.zendesk.com/api/v2/group_memberships/create_many", sc);
