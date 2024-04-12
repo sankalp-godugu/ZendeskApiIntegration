@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Authentication.BearerToken;
+﻿using ClosedXML.Excel;
+using Microsoft.AspNetCore.Authentication.BearerToken;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
@@ -60,7 +61,6 @@ namespace ZendeskApiIntegration.App.Services
 
         public async Task CreateGroupMemberships(ILogger logger)
         {
-            // Main
             using HttpClient client = httpClientFactory.CreateClient("ZD");
             client.DefaultRequestHeaders.Accept.Clear();
             client.DefaultRequestHeaders.Accept.Add(
@@ -68,48 +68,25 @@ namespace ZendeskApiIntegration.App.Services
             client.DefaultRequestHeaders.Add("User-Agent", ".NET Foundation Repository Reporter");
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.ASCII.GetBytes($"sankalp.godugu@nationsbenefits.com/token:2T6Xd5Vpw6dwmKvUo8XZj1nPK4o5td9qheoSaER3")));
 
-            string csvPath = ReadCsv();
-            string apiUrl = "";
-
-            Dictionary<long, string> groups = new()
-            {
-                { 22245229281303, "Albertsons Marketplace" },
-                { 18731640267543, "CSS"  },
-                { 18153132673943, "DEV Data Request" },
-                { 17859358579863, "DEV Prod Support" },
-                { 18731658773143, "Grievances" },
-                { 18880485044759, "Escalations" },
-                { 18736796524183, "Mail Room" },
-                { 18731646602263, "MCO Admin Portal" },
-                { 19851565498519, "MCO Client / Agent Requests" },
-                { 20499080460695, "MCO NationsMeals" },
-                { 20111813580055, "Nations Meals" },
-                { 18736987865751, "PERS" },
-                { 18731644124439, "Supervisor Callbacks" },
-                { 18737030342295, "Transportation" }
-            };
-
-            foreach (long groupId in groups.Select(g => g.Key))
+            foreach (long groupId in Constants.Groups.Select(g => g.Key))
             {
                 bool isFirstIter = true;
 
-                for (int i = 0; i < 400; i += 100)
+                string filePath = @"C:\Users\Sankalp.Godugu\Downloads\4.8.24 Attrition class - as of 117pm on 4.11.xlsx";
+                IEnumerable<User> usersFromFile = MapFileDataToListOfUsers(filePath, 2);
+                if (isFirstIter)
                 {
-                    IEnumerable<User> users = MapCsvToListOfUsers(csvPath, i + (isFirstIter ? 1 : 0));
-                    if (isFirstIter)
-                    {
-                        isFirstIter = false;
-                    }
+                    isFirstIter = false;
+                }
+                string query = ConstructFullQuery(usersFromFile);
 
-                    apiUrl = ConstructApiUrl(users);
-                    UsersResponse? result = (UsersResponse?)await GetUsers(apiUrl);
-                    if (result?.Users.Count > 0)
+                IEnumerable<User> usersFromZendesk = await GetUsers(query);
+                if (usersFromZendesk?.Count() > 0)
+                {
+                    GroupMembershipList groupMemberships = ConstructBulkGroupMembershipAssignmentJSON(usersFromZendesk, groupId);
+                    if (groupMemberships.GroupMemberships.Count > 0)
                     {
-                        GroupMembershipList groupMemberships = ConstructBulkGroupMembershipAssignmentJSON(result.Users, groupId);
-                        if (groupMemberships.GroupMemberships.Count > 0)
-                        {
-                            _ = await BulkCreateMemberships(groupMemberships);
-                        }
+                        _ = await BulkCreateMemberships(groupMemberships);
                     }
                 }
             }
@@ -403,38 +380,44 @@ namespace ZendeskApiIntegration.App.Services
             return countResponse?.Count;
         }
 
-        private static string ReadCsv()
+        private static IEnumerable<User> MapFileDataToListOfUsers(string filePath, int sheetPos = 2)
         {
-            //System.Console.WriteLine("Enter full path of Csv file: ");
-            return @"C:\Users\Sankalp.Godugu\OneDrive - NationsBenefits\Documents\Business\Zendesk Integration\Mini Surge 3.27 & 3.28.csv";//Console.ReadLine();
-        }
+            List<User> users = [];
 
-        private static IEnumerable<User> MapCsvToListOfUsers(string csvPath, int skip)
-        {
-            IEnumerable<User> users = File.ReadAllLines(csvPath)
-            .Skip(skip) // skip the header rows
-            .Take(100) // can only bulk assign 100 at a time
-            .Select(col => col.Split(','))
-            .Select(col => new User
+            using (var workbook = new XLWorkbook(filePath))
             {
-                Email = col[0]
-            });
+                var worksheet = workbook.Worksheet(sheetPos); // Assuming the data is in the first worksheet
+
+                // Find the header row
+                var columns = worksheet.Row(1).CellsUsed().Select(c => c.Value.ToString()).ToList();
+
+                // Find the index of the "Email" column
+                string? emailColName = columns.FirstOrDefault(h => h.Contains("email", StringComparison.OrdinalIgnoreCase)) ?? throw new Exception("Email column not found in the Excel file.");
+                int emailColumnIndex = columns.IndexOf(emailColName);
+                
+                // Read data starting from the row after the header
+                var rows = worksheet.RowsUsed().Skip(1);
+                foreach (var row in rows)
+                {
+                    var email = row.Cell(emailColumnIndex + 1).Value.ToString(); // Excel columns are 1-based
+                    users.Add(new User { Email = email });
+                }
+            }
+
             return users;
         }
 
-        private static string ConstructApiUrl(IEnumerable<User> users)
+        private static string ConstructFullQuery(IEnumerable<User> users)
         {
-            string baseUrl = "https://nationsbenefits.zendesk.com/api/v2/users/search?query=";
             string query = string.Empty;
             foreach (User user in users)
             {
                 query += "user:" + user.Email + " ";
             }
-            query = query.Trim();
-            return baseUrl + query;
+            return query.Trim();
         }
 
-        private static GroupMembershipList ConstructBulkGroupMembershipAssignmentJSON(List<User> users, long groupId)
+        private static GroupMembershipList ConstructBulkGroupMembershipAssignmentJSON(IEnumerable<User> users, long groupId)
         {
             GroupMembershipList groupMembershipList = new();
             foreach (User user in users)
@@ -460,12 +443,10 @@ namespace ZendeskApiIntegration.App.Services
             StringContent sc = new(json, Encoding.UTF8, "application/json");
             HttpResponseMessage response = await httpClientFactory.CreateClient("ZD").PostAsync("https://nationsbenefits.zendesk.com/api/v2/group_memberships/create_many", sc);
             _ = await response.Content.ReadAsStringAsync();
-
-            //File.WriteAllText(@"C:\Users\Sankalp.Godugu\OneDrive - NationsBenefits\Documents\Business\Zendesk Integration\Zendesk\tempFile2.json", result);
             return response.IsSuccessStatusCode ? "success" : "error";
         }
 
-        private async Task SendEmail(IEnumerable<User> users)
+        public async Task SendEmail(IEnumerable<User> users, ILogger log)
         {
             // SMTP server settings
             string smtpServer = "smtp.office365.com";
@@ -496,7 +477,7 @@ namespace ZendeskApiIntegration.App.Services
             try
             {
                 // Send the email
-                client.Send(message);
+                await client.SendMailAsync(message);
                 Console.WriteLine("Email sent successfully.");
             }
             catch (Exception ex)

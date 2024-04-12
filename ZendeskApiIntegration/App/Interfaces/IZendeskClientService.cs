@@ -38,6 +38,6 @@ namespace ZendeskApiIntegration.App.Interfaces
         public Task DeleteTickets(ILogger logger);
 
         public Task<IEnumerable<Ticket>> GetTicketsWithIncorrectAddress(ILogger logger);
-        Task SendEmail(IEnumerable<User> listOfUsersToSuspend, ILogger log);
+        public Task SendEmail(IEnumerable<User> listOfUsersToSuspend, ILogger log);
     }
 }
