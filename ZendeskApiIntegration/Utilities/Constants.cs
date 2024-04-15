@@ -7,6 +7,8 @@
         public static readonly string Organization = "organization";
         public static readonly int PageSize = 1000;
 
+        public static readonly string MeaTrainingCohort415 = @"C:\Users\Sankalp.Godugu\Downloads\4.15 MEA Training Cohort 4.12.24 Final.xlsx";
+
         public static readonly Dictionary<long, string> Groups = new()
             {
                 { 22245229281303, "Albertsons Marketplace" },

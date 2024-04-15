@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using ZendeskApiIntegration.App.Interfaces;
 using ZendeskApiIntegration.DataLayer.Interfaces;
+using ZendeskApiIntegration.Model;
 
 namespace ZendeskApiIntegration.TriggerUtilities
 {
@@ -31,9 +32,9 @@ namespace ZendeskApiIntegration.TriggerUtilities
                     log.LogInformation($"C# Timer trigger function executed at: {DateTime.Now}");
                     log?.LogInformation("********* Member PD Orders => Zendesk Contact List Execution Started **********");
 
+                    //IEnumerable<User> listOfUsersToSuspend = await zendeskClientService.GetInactiveUsers(log);
+                    //await zendeskClientService.SendEmail(listOfUsersToSuspend, log);
                     await zendeskClientService.CreateGroupMemberships(log);
-                    IEnumerable<Model.User> listOfUsersToSuspend = await zendeskClientService.GetInactiveUsers(log);
-                    await zendeskClientService.SendEmail(listOfUsersToSuspend, log);
 
                 });
 

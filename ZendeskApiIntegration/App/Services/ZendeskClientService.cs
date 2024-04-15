@@ -72,8 +72,8 @@ namespace ZendeskApiIntegration.App.Services
             {
                 bool isFirstIter = true;
 
-                string filePath = @"C:\Users\Sankalp.Godugu\Downloads\4.8.24 Attrition class - as of 117pm on 4.11.xlsx";
-                IEnumerable<User> usersFromFile = MapFileDataToListOfUsers(filePath, 2);
+                string filePath = Constants.MeaTrainingCohort415;
+                IEnumerable<User> usersFromFile = MapFileDataToListOfUsers(filePath);
                 if (isFirstIter)
                 {
                     isFirstIter = false;
@@ -392,7 +392,7 @@ namespace ZendeskApiIntegration.App.Services
             return countResponse?.Count;
         }
 
-        private static IEnumerable<User> MapFileDataToListOfUsers(string filePath, int sheetPos = 2)
+        private static IEnumerable<User> MapFileDataToListOfUsers(string filePath, int sheetPos = 1)
         {
             List<User> users = [];
 
