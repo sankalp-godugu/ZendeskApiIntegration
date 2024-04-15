@@ -3,7 +3,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using ZendeskApiIntegration.App.Interfaces;
 using ZendeskApiIntegration.DataLayer.Interfaces;
-using ZendeskApiIntegration.Model;
 
 namespace ZendeskApiIntegration.TriggerUtilities
 {

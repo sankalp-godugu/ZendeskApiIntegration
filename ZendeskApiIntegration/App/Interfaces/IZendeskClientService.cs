@@ -4,7 +4,7 @@ using ZendeskApiIntegration.Model;
 namespace ZendeskApiIntegration.App.Interfaces
 {
     /// <summary>
-    /// Interface for 
+    /// Interface for
     /// </summary>
     public interface IZendeskClientService
     {
