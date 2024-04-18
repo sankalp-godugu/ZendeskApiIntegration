@@ -222,35 +222,6 @@ namespace ZendeskApiIntegration.App.Services
             }
         }
 
-        public async Task<IEnumerable<User>> GetInactiveUsers(ILogger logger)
-        {
-            string date = DateTime.Now.AddMonths(-1).Date.ToString("yyyy-MM-dd");
-            IEnumerable<User> users = await GetUsers($"type:{Constants.User} role:end-user&last_login_at<{date}");
-            List<User> usersNeverLoggedIn = [];
-            List<User> usersNotLoggedInPastMonth = [];
-            List<User> activeUsers = [];
-
-            foreach (User user in users)
-            {
-                bool isDate = DateTime.TryParse(user.LastLoginAt, out DateTime lastLoginAt);
-
-                if (!isDate)
-                {
-                    usersNeverLoggedIn.Add(user);
-                }
-                else if (lastLoginAt < DateTime.Now.AddMonths(-1))
-                {
-                    usersNotLoggedInPastMonth.Add(user);
-                }
-                else
-                {
-                    activeUsers.Add(user);
-                }
-            }
-
-            return usersNeverLoggedIn.Concat(usersNotLoggedInPastMonth);
-        }
-
         public async Task<IEnumerable<Ticket>> GetTicketsWithIncorrectAddress(ILogger logger)
         {
             return await GetTickets($"type:{Constants.Ticket} description:wrong address description:incorrect address");
@@ -455,44 +426,119 @@ namespace ZendeskApiIntegration.App.Services
             return response.IsSuccessStatusCode ? "success" : "error";
         }
 
+        public async Task<IEnumerable<User>> GetInactiveUsers(ILogger logger)
+        {
+            string date = DateTime.Now.AddMonths(-1).Date.ToString("yyyy-MM-dd");
+            IEnumerable<User> users = await GetUsers($"type:{Constants.User} role:end-user&last_login_at<{date}");
+            List<User> usersNeverLoggedIn = [];
+            List<User> usersNotLoggedInPastMonth = [];
+            List<User> activeUsers = [];
+
+            foreach (User user in users)
+            {
+                bool isDate = DateTime.TryParse(user.LastLoginAt, out DateTime lastLoginAt);
+
+                if (!isDate)
+                {
+                    usersNeverLoggedIn.Add(user);
+                }
+                else if (lastLoginAt < DateTime.Now.AddMonths(-1))
+                {
+                    usersNotLoggedInPastMonth.Add(user);
+                }
+                else
+                {
+                    activeUsers.Add(user);
+                }
+            }
+
+            return usersNeverLoggedIn.Concat(usersNotLoggedInPastMonth);
+        }
+
         public async Task SendEmail(IEnumerable<User> users, ILogger log)
         {
-            // SMTP server settings
             string smtpServer = "smtp.office365.com";
-            int smtpPort = 587; // or any other port your SMTP server uses
-            string smtpUsername = "your_smtp_username";
-            string smtpPassword = "your_smtp_password";
+            int smtpPort = 587;
+            string smtpUsername = "donotreply_zendesk@nationsbenefits.com";
+            string smtpPassword = "_iDa4I/9G7%5\"o.7";
+            string fromAddress = "donotreply_zendesk@nationsbenefits.com";
+            string subject = "Action Needed: Login to Your NationsBenefits Zendesk Account Within 7 Days";
 
-            // Sender and recipient email addresses
-            string fromAddress = "sankalp.godugu@nationsbenefits.com";
-            string toAddress = "sankalp.godugu@nationsbenefits.com";
+            //var mailMessages = new List<MailMessage>();
+            using SmtpClient client = new(smtpServer, smtpPort)
+            {
+                EnableSsl = true,
+                Credentials = new NetworkCredential(smtpUsername, smtpPassword)
+            };
 
-            // Email content
-            string subject = "THIS IS A TEST - Zutomation User Suspension Automation";
-            string body = "THIS IS A TEST - Zutomation User Suspension Automation";
+            foreach (var user in users)
+            {
+                string toAddress = user.Name;
+                string body = @$"
+Dear {user.Name}
 
-            // Create a new SMTP client
-            using SmtpClient client = new(smtpServer, smtpPort);
+We’ve noticed that there has been no activity on your NationsBenefits Zendesk Help Center account for some time. To ensure the security and integrity of our platform, we kindly ask you to log into your account within the next 7 days. If no login activity is recorded by [Date 7 days after], your account will be suspended for security purposes.
 
-            // Enable SSL/TLS if required
-            client.EnableSsl = true;
+Please take a moment to log in by clicking on the link below: https://membersupport.nationsbenefits.com/
 
-            // Set credentials (if authentication is required)
-            client.Credentials = new NetworkCredential(smtpUsername, smtpPassword);
+Thank you for your attention to this matter.
 
-            // Create the email message
-            MailMessage message = new(fromAddress, toAddress, subject, body);
+Regards,
+Sankalp Godugu
+Automation Engineer
+C: 216-650-3201
+E: sankalp.godugu@nationsbenefits.com
+1700 N University Drive | Plantation, FL 33322
+Note: This email and any attachments may contain information that is confidential and/or privileged and prohibited from disclosure or unauthorized use under applicable law. If you are not the intended recipient, you are hereby notified that any disclosure, copying or distribution or taking of action in reliance upon the contents of this transmission is strictly prohibited. If you have received this email in error, you are instructed to notify the sender by reply email and delete it to the fullest extent possible once you have notified the sender of the error.
+";
 
+                // Create the email message
+                MailMessage message = new(fromAddress, toAddress, subject, body);
+                message.IsBodyHtml = true;
+
+                try
+                {
+                    // Send the email
+                    if (user.Email == "@nationsbenefits.com")
+                    {
+                        await client.SendMailAsync(message);
+                        log.LogInformation("Email sent successfully.");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    log.LogInformation($"Failed to send email: {ex.Message}");
+                }
+
+                //mailMessages.Add(message);
+            }
+        }
+
+        public async Task<int> SuspendUsers(IEnumerable<User> users, ILogger log)
+        {
             try
             {
-                // Send the email
-                await client.SendMailAsync(message);
-                Console.WriteLine("Email sent successfully.");
+                int numUsersSuspended = -1;
+                User user = new()
+                {
+                    Suspended = true
+                };
+                string json = JsonConvert.SerializeObject(user);
+                StringContent sc = new(json, Encoding.UTF8, "application/json");
+                var userIds = string.Join(',', users.Select(u => u.Id));
+                HttpResponseMessage response = await httpClientFactory.CreateClient("ZD").PostAsync($"/users/update_many?ids={userIds}", sc);
+                if (response.IsSuccessStatusCode)
+                {
+                    var result = await response.Content.ReadAsStringAsync();
+                    
+                }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Failed to send email: {ex.Message}");
+                log.LogInformation(ex.Message);
             }
+
+            return 0;
         }
 
         #endregion
