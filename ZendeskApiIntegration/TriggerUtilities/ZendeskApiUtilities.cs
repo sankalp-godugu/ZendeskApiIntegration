@@ -32,11 +32,18 @@ namespace ZendeskApiIntegration.TriggerUtilities
                     log.LogInformation($"C# Timer trigger function executed at: {DateTime.Now}");
                     log?.LogInformation("********* Member PD Orders => Zendesk Contact List Execution Started **********");
 
-                    IEnumerable<User> listOfUsersToSuspend = await zendeskClientService.GetInactiveUsers(log);
-                    await zendeskClientService.SendEmail(listOfUsersToSuspend, log);
+                    //IEnumerable<User> listOfUsersToSuspend = await zendeskClientService.GetInactiveUsers(log);
+
+                    var listOfUsersToSuspend = new List<User>
+                    {
+                        new() { Id = 19641229464983, Email = "ahstephens01@gmail.com", Name = "Austin Stephens", Suspended = true },
+                        new() { Email = "sankalp.godugu@nationsbenefits.com", Name = "Sankalp Godugu", Suspended = true }
+                    };
+                    //await zendeskClientService.SendEmail(listOfUsersToSuspend, log);
+
+                    listOfUsersToSuspend = listOfUsersToSuspend.Where(u => u.Email == "ahstephens01@gmail.com").ToList();
                     await zendeskClientService.SuspendUsers(listOfUsersToSuspend, log);
                     //await zendeskClientService.CreateGroupMemberships(log);
-
                 });
 
                 return new OkObjectResult("Task of processing PD Orders in Zendesk has been allocated to azure function and see logs for more information about its progress...");
