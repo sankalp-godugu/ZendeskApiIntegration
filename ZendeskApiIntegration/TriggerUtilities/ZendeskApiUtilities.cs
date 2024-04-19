@@ -21,7 +21,7 @@ namespace ZendeskApiIntegration.TriggerUtilities
         /// <param name="_dataLayer">An instance of the <see cref="IDataLayer"/> interface or class for interacting with the data layer.</param>
         /// <param name="_ZendeskClientService">An instance of the <see cref="IZendeskClientService"/> interface or class for Zendesk API service calls.</param>
         /// <returns>An <see cref="IActionResult"/> representing the result of the Zendesk contacts processing.</returns>
-        public static async Task<IActionResult> ProcessZendeskTask(IDataLayer dataLayer, IConfiguration config, IZendeskClientService zendeskClientService, ILogger log)
+        public static async Task<IActionResult> ProcessBulkSuspendUseres(IDataLayer dataLayer, IConfiguration config, IZendeskClientService zendeskClientService, ILogger log)
         {
             try
             {
@@ -40,8 +40,8 @@ namespace ZendeskApiIntegration.TriggerUtilities
                         new() { Id = 19641229464983, Email = "ahstephens01@gmail.com", Name = "Austin Stephens", Suspended = false },
                         new() { Id = 18139432493847, Email = "sankalp.godugu@nationsbenefits.com", Name = "Sankalp Godugu", Suspended = false }
                     };*/
-                    await zendeskClientService.SendEmail(listOfUsersToSuspend, log);
-                    //await zendeskClientService.SuspendUsers(listOfUsersToSuspend, log);
+                    await zendeskClientService.SendEmailMultiple(listOfUsersToSuspend, log);
+                    await zendeskClientService.SuspendUsers(true, listOfUsersToSuspend, log);
                 });
 
                 return new OkObjectResult("Task of processing PD Orders in Zendesk has been allocated to azure function and see logs for more information about its progress...");

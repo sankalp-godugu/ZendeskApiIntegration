@@ -28,7 +28,7 @@ namespace ZendeskApiIntegration.App.Interfaces
         /// </summary>
         /// <param name="logger"></param>
         /// <returns>count of users suspended</returns>
-        public Task<UpdateManyTicketsResponse> SuspendUsers(List<User> users, ILogger logger);
+        public Task<UpdateManyTicketsResponse> SuspendUsers(bool shouldSuspend, List<User> users, ILogger logger);
 
         /// <summary>
         /// Get contact list download Url from Zendesk asychronously.
@@ -45,6 +45,7 @@ namespace ZendeskApiIntegration.App.Interfaces
         public Task DeleteTickets(ILogger logger);
 
         public Task<List<Ticket>> GetTicketsWithIncorrectAddress(ILogger logger);
-        public Task SendEmail(List<User> listOfUsersToSuspend, ILogger log);
+        public Task SendEmailMultiple(List<User> listOfUsersToSuspend, ILogger log);
+        public Task SendEmail(string toAddress, string orgName, string name, ILogger log);
     }
 }

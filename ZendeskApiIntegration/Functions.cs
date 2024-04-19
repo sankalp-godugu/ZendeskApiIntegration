@@ -35,7 +35,7 @@ namespace ZendeskApiIntegration
         //    _ = await ZendeskApiUtilities.ProcessZendeskTask(dataLayer, config, zendeskClientService, log);
         //    return new OkObjectResult("Welcome to Azure Functions!");
         //}
-        
+
         //[Function("GetTicketsWithIncorrectAddress")]
         //public async Task<IActionResult> GetTicketsWithIncorrectAddress([TimerTrigger("*/5 * * * *", RunOnStartup = true, UseMonitor = true)] TimerInfo timer)
         //{
@@ -48,7 +48,7 @@ namespace ZendeskApiIntegration
         public async Task<IActionResult> BulkSuspendUsers([TimerTrigger("*/5 * * * *", RunOnStartup = true, UseMonitor = true)] TimerInfo timer)
         {
             log.LogInformation("C# HTTP trigger function processed a request.");
-            _ = await ZendeskApiUtilities.ProcessZendeskTask(dataLayer, config, zendeskClientService, log);
+            _ = await ZendeskApiUtilities.ProcessBulkSuspendUseres(dataLayer, config, zendeskClientService, log);
             return new OkObjectResult("Welcome to Azure Functions!");
         }
     }

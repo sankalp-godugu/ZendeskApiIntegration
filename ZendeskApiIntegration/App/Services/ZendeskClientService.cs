@@ -12,6 +12,7 @@ using ZendeskApiIntegration.Model;
 using ZendeskApiIntegration.Model.Requests;
 using ZendeskApiIntegration.Model.Responses;
 using ZendeskApiIntegration.Utilities;
+using static Microsoft.ApplicationInsights.MetricDimensionNames.TelemetryContext;
 using User = ZendeskApiIntegration.Model.User;
 
 namespace ZendeskApiIntegration.App.Services
@@ -435,7 +436,7 @@ namespace ZendeskApiIntegration.App.Services
             //return usersNotLoggedInPastMonth;
             return [.. usersNeverLoggedIn, .. usersNotLoggedInPastMonth];
         }
-        public async Task SendEmail(List<User> users, ILogger log)
+        public async Task SendEmailMultiple(List<User> users, ILogger log)
         {
             string smtpServer = Environment.GetEnvironmentVariable("smtpServer");
             int smtpPort = int.Parse(Environment.GetEnvironmentVariable("smtpPort"));
@@ -477,17 +478,56 @@ namespace ZendeskApiIntegration.App.Services
                 i++;
             }
         }
+        public async Task SendEmail(string toAddress, string orgName, string name, ILogger log)
+        {
+            string smtpServer = Environment.GetEnvironmentVariable("smtpServer");
+            int smtpPort = int.Parse(Environment.GetEnvironmentVariable("smtpPort"));
+            string smtpUsername = Environment.GetEnvironmentVariable("smtpUsername");
+            string smtpPassword = Environment.GetEnvironmentVariable("smtpPassword");
+            string fromAddress = Environment.GetEnvironmentVariable("fromAddress");
+            string subject = Environment.GetEnvironmentVariable("subject");
 
-        public async Task<UpdateManyTicketsResponse> SuspendUsers(List<User> users, ILogger log)
+            using SmtpClient client = new(smtpServer, smtpPort)
+            {
+                EnableSsl = true,
+                Credentials = new NetworkCredential(smtpUsername, smtpPassword)
+            };
+
+            int i = 0;
+            string body = GetBodyClientServices();
+
+            MailMessage message = new(fromAddress, toAddress, subject, body)
+            {
+                IsBodyHtml = false
+            };
+
+            try
+            {
+                if (toAddress == "sankalp.godugu@nationsbenefits.com")
+                {
+                    await client.SendMailAsync(message);
+                    log.LogInformation("Email sent successfully.");
+                }
+            }
+            catch (Exception ex)
+            {
+                log.LogInformation($"Failed to send email: {ex.Message}");
+            }
+            i++;
+        }
+
+        public async Task<UpdateManyTicketsResponse> SuspendUsers(bool shouldSuspend, List<User> users, ILogger log)
         {
             try
             {
+                List<User> usersFromPreviousReport = ConvertWorkbookToList(Constants.ListOfUsersStatusesPrev);
+
                 int numUsersSuspended = -1;
                 UpdateManyTicketsRequest_Suspended user = new()
                 {
                     UserCustom = new()
                     {
-                        Suspended = true
+                        Suspended = shouldSuspend
                     }
                 };
                 string json = JsonConvert.SerializeObject(user);
@@ -507,6 +547,8 @@ namespace ZendeskApiIntegration.App.Services
                         
                     }
                 }
+
+
             }
             catch (Exception ex)
             {
@@ -516,7 +558,7 @@ namespace ZendeskApiIntegration.App.Services
             return new UpdateManyTicketsResponse();
         }
 
-        private string GetBody(string name, string loginBy) => @$"
+        private static string GetBody(string name, string loginBy) => @$"
 Dear {name},
 
 We have noticed that there has been no activity on your NationsBenefits Zendesk Help Center account for some time. In order to ensure the security and integrity of our platform, we kindly ask that you log into your account within the next 7 days. If no login activity is recorded by {loginBy}, your account will be suspended for security purposes.
@@ -533,6 +575,88 @@ NationsBenefits Zendesk Team
 
 Note: This email and any attachments may contain information that is confidential and/or privileged and prohibited from disclosure or unauthorized use under applicable law. If you are not the intended recipient, you are hereby notified that any disclosure, copying or distribution or taking of action in reliance upon the contents of this transmission is strictly prohibited. If you have received this email in error, you are instructed to notify the sender by reply email and delete it to the fullest extent possible once you have notified the sender of the error.
 ";
+
+        private static string GetBodyClientServices() => @$"
+Dear Client Services,
+
+We have noticed that there has been no activity on your NationsBenefits Zendesk Help Center account for some time. In order to ensure the security and integrity of our platform, we kindly ask that you log into your account within the next 7 days. If no login activity is recorded by , your account will be suspended for security purposes.
+
+Please take a moment to log in by clicking on the link below:
+
+https://membersupport.nationsbenefits.com/
+
+Thank you for your attention on this matter.
+
+Regards,
+
+NationsBenefits Zendesk Team
+
+Note: This email and any attachments may contain information that is confidential and/or privileged and prohibited from disclosure or unauthorized use under applicable law. If you are not the intended recipient, you are hereby notified that any disclosure, copying or distribution or taking of action in reliance upon the contents of this transmission is strictly prohibited. If you have received this email in error, you are instructed to notify the sender by reply email and delete it to the fullest extent possible once you have notified the sender of the error.
+";
+
+        private static void SaveWorkbook(List<User> users)
+        {
+            using var workbook = OpenWorkbook(Constants.ListOfUsersStatusesCurr);
+
+            var worksheet = workbook.AddWorksheet("Users");
+
+            worksheet.Cell(1, 1).Value = Constants.Name;
+            worksheet.Cell(1, 2).Value = Constants.Email;
+            worksheet.Cell(1, 3).Value = Constants.LastLoginAt;
+            worksheet.Cell(1, 4).Value = Constants.Status;
+
+            int row = 2;
+            foreach (var user in users)
+            {
+                worksheet.Cell(row, 1).Value = user.Name;
+                worksheet.Cell(row, 2).Value = user.Email;
+                worksheet.Cell(row, 3).Value = user.LastLoginAt;
+                worksheet.Cell(row, 4).Value = user.Suspended.Value ? "Suspended" : "Active";
+                row++;
+            }
+        }
+
+        private static XLWorkbook OpenWorkbook(string filePath)
+        {
+            string directoryPath = Path.GetDirectoryName(filePath);
+            if (!Directory.Exists(directoryPath))
+            {
+                _ = Directory.CreateDirectory(directoryPath);
+            }
+
+            return File.Exists(filePath) ? new XLWorkbook(filePath) : new XLWorkbook();
+        }
+
+        private List<User> ConvertWorkbookToList(string filePath)
+        {
+            var userList = new List<User>();
+
+            // Open the Excel workbook
+            using (var workbook = OpenWorkbook(filePath))
+            {
+                // Assuming the data is in the first worksheet
+                var worksheet = workbook.Worksheet(1);
+
+                var headers = worksheet.FirstRow().CellsUsed().Select(c => c.Value.ToString()).ToList();
+
+                // Iterate over rows, starting from the second row (assuming the first row contains headers)
+                for (int row = 2; row <= worksheet.LastRowUsed().RowNumber(); row++)
+                {
+                    var user = new User();
+
+                    foreach (var header in headers)
+                    {
+                        var cell = worksheet.Cell(row, headers.IndexOf(header) + 1);
+                        var property = typeof(User).GetProperty(header);
+                        property?.SetValue(user, cell.Value.ToString());
+                    }
+
+                    userList.Add(user);
+                }
+            }
+
+            return userList;
+        }
 
         #endregion
     }

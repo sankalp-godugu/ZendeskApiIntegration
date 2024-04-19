@@ -110,6 +110,10 @@ public class User
 
     [JsonProperty(PropertyName = "user_fields")]
     public UserFields? UserFields { get; set; }
+
+    // custom fields
+    public string? Status => Suspended == true ? "Suspended" : "Active";
+    public bool ShouldSuspend => DateTime.Parse(LastLoginAt) > DateTime.Now.AddMonths(-1);
 }
 
 public class UserFields
