@@ -73,14 +73,14 @@ namespace ZendeskApiIntegration.App.Services
                 bool isFirstIter = true;
 
                 string filePath = Constants.MeaTrainingCohort415;
-                IEnumerable<User> usersFromFile = MapFileDataToListOfUsers(filePath);
+                List<User> usersFromFile = MapFileDataToListOfUsers(filePath);
                 if (isFirstIter)
                 {
                     isFirstIter = false;
                 }
                 string query = ConstructFullQuery(usersFromFile);
 
-                IEnumerable<User> usersFromZendesk = await GetUsers(query);
+                List<User> usersFromZendesk = await GetUsers(query, logger);
                 if (usersFromZendesk?.Count() > 0)
                 {
                     GroupMembershipList groupMemberships = ConstructBulkGroupMembershipAssignmentJSON(usersFromZendesk, groupId);
@@ -222,7 +222,7 @@ namespace ZendeskApiIntegration.App.Services
             }
         }
 
-        public async Task<IEnumerable<Ticket>> GetTicketsWithIncorrectAddress(ILogger logger)
+        public async Task<List<Ticket>> GetTicketsWithIncorrectAddress(ILogger logger)
         {
             return await GetTickets($"type:{Constants.Ticket} description:wrong address description:incorrect address");
         }
@@ -231,12 +231,7 @@ namespace ZendeskApiIntegration.App.Services
 
         #region Private Methods
 
-        private static string ConstructApiUrl()
-        {
-            return "users/search?query=type:user";
-        }
-
-        private async Task<IEnumerable<Ticket>> GetTickets(string query)
+        private async Task<List<Ticket>> GetTickets(string query)
         {
             try
             {
@@ -288,8 +283,73 @@ namespace ZendeskApiIntegration.App.Services
             }
             return [];
         }
+        private static async Task<int?> GetCountAsync(string query, HttpClient client)
+        {
+            HttpResponseMessage response = await client.GetAsync(query);
+            string result = await response.Content.ReadAsStringAsync();
+            CountResponse? countResponse = JsonConvert.DeserializeObject<CountResponse>(result);
+            return countResponse?.Count;
+        }
+        private static List<User> MapFileDataToListOfUsers(string filePath, int sheetPos = 1)
+        {
+            List<User> users = [];
 
-        private async Task<IEnumerable<User>> GetUsers(string query)
+            using (XLWorkbook workbook = new(filePath))
+            {
+                IXLWorksheet worksheet = workbook.Worksheet(sheetPos); // Assuming the data is in the first worksheet
+
+                // Find the header row
+                List<string> columns = worksheet.Row(1).CellsUsed().Select(c => c.Value.ToString()).ToList();
+
+                // Find the index of the "Email" column
+                string? emailColName = columns.FirstOrDefault(h => h.Contains("email", StringComparison.OrdinalIgnoreCase)) ?? throw new Exception("Email column not found in the Excel file.");
+                int emailColumnIndex = columns.IndexOf(emailColName);
+
+                // Read data starting from the row after the header
+                List<IXLRow> rows = worksheet.RowsUsed().Skip(1).ToList();
+                foreach (IXLRow? row in rows)
+                {
+                    string email = row.Cell(emailColumnIndex + 1).Value.ToString(); // Excel columns are 1-based
+                    users.Add(new User { Email = email });
+                }
+            }
+
+            return users;
+        }
+        private static string ConstructFullQuery(List<User> users)
+        {
+            string query = string.Empty;
+            foreach (User user in users)
+            {
+                query += "user:" + user.Email + " ";
+            }
+            return query.Trim();
+        }
+        private static GroupMembershipList ConstructBulkGroupMembershipAssignmentJSON(List<User> users, long groupId)
+        {
+            GroupMembershipList groupMembershipList = new();
+            foreach (User user in users)
+            {
+                if (user.RoleType is not null)
+                {
+                    groupMembershipList.GroupMemberships.Add(new GroupMembership
+                    {
+                        UserId = user.Id,
+                        GroupId = groupId
+                    });
+                }
+            }
+            return groupMembershipList;
+        }
+        private async Task<string> BulkCreateMemberships(GroupMembershipList groupMembershipList)
+        {
+            string json = JsonConvert.SerializeObject(groupMembershipList);
+            StringContent sc = new(json, Encoding.UTF8, "application/json");
+            HttpResponseMessage response = await httpClientFactory.CreateClient("ZD").PostAsync("https://nationsbenefits.zendesk.com/api/v2/group_memberships/create_many", sc);
+            _ = await response.Content.ReadAsStringAsync();
+            return response.IsSuccessStatusCode ? "success" : "error";
+        }
+        public async Task<List<User>> GetUsers(string query, ILogger logger)
         {
             try
             {
@@ -340,96 +400,16 @@ namespace ZendeskApiIntegration.App.Services
 
                 return users;
             }
-            catch (JsonException ex)
-            {
-                await Console.Out.WriteLineAsync(ex.Message);
-            }
-            catch (HttpRequestException ex)
-            {
-                await Console.Out.WriteLineAsync(ex.Message);
-            }
             catch (Exception ex)
             {
                 await Console.Out.WriteLineAsync(ex.Message);
             }
-            return null;
+            return [];
         }
-
-        private static async Task<int?> GetCountAsync(string query, HttpClient client)
-        {
-            HttpResponseMessage response = await client.GetAsync(query);
-            string result = await response.Content.ReadAsStringAsync();
-            CountResponse? countResponse = JsonConvert.DeserializeObject<CountResponse>(result);
-            return countResponse?.Count;
-        }
-
-        private static IEnumerable<User> MapFileDataToListOfUsers(string filePath, int sheetPos = 1)
-        {
-            List<User> users = [];
-
-            using (XLWorkbook workbook = new(filePath))
-            {
-                IXLWorksheet worksheet = workbook.Worksheet(sheetPos); // Assuming the data is in the first worksheet
-
-                // Find the header row
-                List<string> columns = worksheet.Row(1).CellsUsed().Select(c => c.Value.ToString()).ToList();
-
-                // Find the index of the "Email" column
-                string? emailColName = columns.FirstOrDefault(h => h.Contains("email", StringComparison.OrdinalIgnoreCase)) ?? throw new Exception("Email column not found in the Excel file.");
-                int emailColumnIndex = columns.IndexOf(emailColName);
-
-                // Read data starting from the row after the header
-                IEnumerable<IXLRow> rows = worksheet.RowsUsed().Skip(1);
-                foreach (IXLRow? row in rows)
-                {
-                    string email = row.Cell(emailColumnIndex + 1).Value.ToString(); // Excel columns are 1-based
-                    users.Add(new User { Email = email });
-                }
-            }
-
-            return users;
-        }
-
-        private static string ConstructFullQuery(IEnumerable<User> users)
-        {
-            string query = string.Empty;
-            foreach (User user in users)
-            {
-                query += "user:" + user.Email + " ";
-            }
-            return query.Trim();
-        }
-
-        private static GroupMembershipList ConstructBulkGroupMembershipAssignmentJSON(IEnumerable<User> users, long groupId)
-        {
-            GroupMembershipList groupMembershipList = new();
-            foreach (User user in users)
-            {
-                if (user.RoleType is not null)
-                {
-                    groupMembershipList.GroupMemberships.Add(new GroupMembership
-                    {
-                        UserId = user.Id,
-                        GroupId = groupId
-                    });
-                }
-            }
-            return groupMembershipList;
-        }
-
-        private async Task<string> BulkCreateMemberships(GroupMembershipList groupMembershipList)
-        {
-            string json = JsonConvert.SerializeObject(groupMembershipList);
-            StringContent sc = new(json, Encoding.UTF8, "application/json");
-            HttpResponseMessage response = await httpClientFactory.CreateClient("ZD").PostAsync("https://nationsbenefits.zendesk.com/api/v2/group_memberships/create_many", sc);
-            _ = await response.Content.ReadAsStringAsync();
-            return response.IsSuccessStatusCode ? "success" : "error";
-        }
-
-        public async Task<IEnumerable<User>> GetInactiveUsers(ILogger logger)
+        public async Task<List<User>> GetInactiveUsers(ILogger logger)
         {
             string date = DateTime.Now.AddMonths(-1).Date.ToString("yyyy-MM-dd");
-            IEnumerable<User> users = await GetUsers($"type:{Constants.User} role:end-user&last_login_at<{date}");
+            List<User> users = await GetUsers($"type:{Constants.User} role:end-user&last_login_at<{date}", logger);
             List<User> usersNeverLoggedIn = [];
             List<User> usersNotLoggedInPastMonth = [];
             List<User> activeUsers = [];
@@ -452,17 +432,18 @@ namespace ZendeskApiIntegration.App.Services
                 }
             }
 
-            return usersNeverLoggedIn.Concat(usersNotLoggedInPastMonth);
+            //return usersNotLoggedInPastMonth;
+            return [.. usersNeverLoggedIn, .. usersNotLoggedInPastMonth];
         }
-
-        public async Task SendEmail(IEnumerable<User> users, ILogger log)
+        public async Task SendEmail(List<User> users, ILogger log)
         {
-            string smtpServer = "smtp.office365.com";
-            int smtpPort = 587;
-            string smtpUsername = "donotreply_zendesk@nationsbenefits.com";
-            string smtpPassword = "_iDa4I/9G7%5\"o.7";
-            string fromAddress = "donotreply_zendesk@nationsbenefits.com";
-            string subject = "Action Needed: Login to Your NationsBenefits Zendesk Account Within 7 Days";
+            string smtpServer = Environment.GetEnvironmentVariable("smtpServer");
+            int smtpPort = int.Parse(Environment.GetEnvironmentVariable("smtpPort"));
+            string smtpUsername = Environment.GetEnvironmentVariable("smtpUsername");
+            string smtpPassword = Environment.GetEnvironmentVariable("smtpPassword");
+            string fromAddress = Environment.GetEnvironmentVariable("fromAddress");
+            string subject = Environment.GetEnvironmentVariable("subject");
+            string loginBy = DateTime.Now.AddDays(7).Date.ToLongDateString();
 
             using SmtpClient client = new(smtpServer, smtpPort)
             {
@@ -470,28 +451,12 @@ namespace ZendeskApiIntegration.App.Services
                 Credentials = new NetworkCredential(smtpUsername, smtpPassword)
             };
 
+            int i = 0;
             foreach (var user in users)
             {
                 string toAddress = user.Email;
-                string body = @$"
-Dear {user.Name},
+                string body = GetBody(user.Name, loginBy);
 
-We’ve noticed that there has been no activity on your NationsBenefits Zendesk Help Center account for some time. To ensure the security and integrity of our platform, we kindly ask you to log into your account within the next 7 days. If no login activity is recorded by {DateTime.Now.AddDays(7).Date.ToShortDateString()}, your account will be suspended for security purposes.
-
-Please take a moment to log in by clicking on the link below:
-
-https://membersupport.nationsbenefits.com/
-
-Thank you for your attention to this matter.
-
-Regards,
-
-NationsBenefits Zendesk Team
-
-Note: This email and any attachments may contain information that is confidential and/or privileged and prohibited from disclosure or unauthorized use under applicable law. If you are not the intended recipient, you are hereby notified that any disclosure, copying or distribution or taking of action in reliance upon the contents of this transmission is strictly prohibited. If you have received this email in error, you are instructed to notify the sender by reply email and delete it to the fullest extent possible once you have notified the sender of the error.
-";
-
-                // Create the email message
                 MailMessage message = new(fromAddress, toAddress, subject, body)
                 {
                     IsBodyHtml = false
@@ -499,33 +464,48 @@ Note: This email and any attachments may contain information that is confidentia
 
                 try
                 {
-                    await client.SendMailAsync(message);
-                    log.LogInformation("Email sent successfully.");
+                    if (toAddress == "sankalp.godugu@nationsbenefits.com")
+                    {
+                        await client.SendMailAsync(message);
+                        log.LogInformation("Email sent successfully.");
+                    }
                 }
                 catch (Exception ex)
                 {
                     log.LogInformation($"Failed to send email: {ex.Message}");
                 }
+                i++;
             }
         }
 
-        public async Task<int> SuspendUsers(IEnumerable<User> users, ILogger log)
+        public async Task<UpdateManyTicketsResponse> SuspendUsers(List<User> users, ILogger log)
         {
             try
             {
                 int numUsersSuspended = -1;
-                User user = new()
+                UpdateManyTicketsRequest_Suspended user = new()
                 {
-                    Suspended = true
+                    UserCustom = new()
+                    {
+                        Suspended = true
+                    }
                 };
                 string json = JsonConvert.SerializeObject(user);
                 StringContent sc = new(json, Encoding.UTF8, "application/json");
                 var userIds = string.Join(',', users.Select(u => u.Id));
                 var client = httpClientFactory.CreateClient("ZD");
-                HttpResponseMessage response = await httpClientFactory.CreateClient("ZD").PostAsync($"users/update_many?ids={userIds}", sc);
+
+                HttpResponseMessage response = await client.PutAsync($"users/update_many?ids={userIds}", sc);
                 if (response.IsSuccessStatusCode)
                 {
                     var result = await response.Content.ReadAsStringAsync();
+                    var jobStatus = JsonConvert.DeserializeObject<UpdateManyTicketsResponse>(result);
+                    response = await client.GetAsync($"job_statuses/{jobStatus.JobStatus.Id}");
+                    if (response.IsSuccessStatusCode)
+                    {
+                        result = await response.Content.ReadAsStringAsync();
+                        
+                    }
                 }
             }
             catch (Exception ex)
@@ -533,8 +513,26 @@ Note: This email and any attachments may contain information that is confidentia
                 log.LogInformation(ex.Message);
             }
 
-            return 0;
+            return new UpdateManyTicketsResponse();
         }
+
+        private string GetBody(string name, string loginBy) => @$"
+Dear {name},
+
+We have noticed that there has been no activity on your NationsBenefits Zendesk Help Center account for some time. In order to ensure the security and integrity of our platform, we kindly ask that you log into your account within the next 7 days. If no login activity is recorded by {loginBy}, your account will be suspended for security purposes.
+
+Please take a moment to log in by clicking on the link below:
+
+https://membersupport.nationsbenefits.com/
+
+Thank you for your attention on this matter.
+
+Regards,
+
+NationsBenefits Zendesk Team
+
+Note: This email and any attachments may contain information that is confidential and/or privileged and prohibited from disclosure or unauthorized use under applicable law. If you are not the intended recipient, you are hereby notified that any disclosure, copying or distribution or taking of action in reliance upon the contents of this transmission is strictly prohibited. If you have received this email in error, you are instructed to notify the sender by reply email and delete it to the fullest extent possible once you have notified the sender of the error.
+";
 
         #endregion
     }

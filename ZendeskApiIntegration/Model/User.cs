@@ -148,7 +148,7 @@ public class MediaItem
 
 public class Photo : MediaItem
 {
-    public required IEnumerable<Thumbnail> Thumbnails { get; set; }
+    public required List<Thumbnail> Thumbnails { get; set; }
 }
 
 public class Thumbnail : MediaItem

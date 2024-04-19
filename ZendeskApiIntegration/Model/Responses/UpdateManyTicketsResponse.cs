@@ -1,27 +1,22 @@
-﻿namespace ZendeskApiIntegration.Model.Responses
+﻿using System.Text.Json.Serialization;
+
+namespace ZendeskApiIntegration.Model.Responses
 {
-    // Root myDeserializedClass = JsonConvert.DeserializeObject<Root>(myJsonResponse);
     public class JobStatus
     {
-        public required string id { get; set; }
-        public required string message { get; set; }
-        public required string progress { get; set; }
-        public required List<UMTRResult> results { get; set; }
-        public required string status { get; set; }
-        public required string total { get; set; }
-        public required string url { get; set; }
-    }
-
-    public class UMTRResult
-    {
-        public required string id { get; set; }
-        public required string index { get; set; }
+        public string Id { get; set; }
+        [JsonPropertyName("job_type")]
+        public string JobType { get; set; }
+        public string Url { get; set; }
+        public int Total { get; set; }
+        public string Progress { get; set; }
+        public string Status { get; set; }
+        public string Message { get; set; }
+        public string Results { get; set; }
     }
 
     public class UpdateManyTicketsResponse
     {
-        public required JobStatus job_status { get; set; }
+        public JobStatus JobStatus { get; set; }
     }
-
-
 }

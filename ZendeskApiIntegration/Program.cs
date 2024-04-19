@@ -27,6 +27,7 @@ IHost host = new HostBuilder()
             client.DefaultRequestHeaders.Accept.Add(
                 new MediaTypeWithQualityHeaderValue("application/vnd.github.v3+json"));
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.ASCII.GetBytes($"sankalp.godugu@nationsbenefits.com/token:2T6Xd5Vpw6dwmKvUo8XZj1nPK4o5td9qheoSaER3")));
+            client.DefaultRequestHeaders.Add("Cache-Control", "no-cache");
         });
         _ = services.AddTransient<IZendeskClientService, ZendeskClientService>((s) =>
         {

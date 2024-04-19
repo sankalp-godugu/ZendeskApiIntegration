@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 using ZendeskApiIntegration.Model;
+using ZendeskApiIntegration.Model.Responses;
 
 namespace ZendeskApiIntegration.App.Interfaces
 {
@@ -20,14 +21,14 @@ namespace ZendeskApiIntegration.App.Interfaces
         /// </summary>
         /// <param name="logger">Logger.<see cref="ILogger"/></param>
         /// <returns>Returns the list of contacts from Zendesk.</returns>
-        public Task<IEnumerable<User>> GetInactiveUsers(ILogger logger);
+        public Task<List<User>> GetInactiveUsers(ILogger logger);
 
         /// <summary>
         /// Suspends a list of users
         /// </summary>
         /// <param name="logger"></param>
         /// <returns>count of users suspended</returns>
-        public Task<int> SuspendUsers(IEnumerable<User> users, ILogger logger);
+        public Task<UpdateManyTicketsResponse> SuspendUsers(List<User> users, ILogger logger);
 
         /// <summary>
         /// Get contact list download Url from Zendesk asychronously.
@@ -43,7 +44,7 @@ namespace ZendeskApiIntegration.App.Interfaces
         /// <returns>Returns the list of contacts from Zendesk.</returns>
         public Task DeleteTickets(ILogger logger);
 
-        public Task<IEnumerable<Ticket>> GetTicketsWithIncorrectAddress(ILogger logger);
-        public Task SendEmail(IEnumerable<User> listOfUsersToSuspend, ILogger log);
+        public Task<List<Ticket>> GetTicketsWithIncorrectAddress(ILogger logger);
+        public Task SendEmail(List<User> listOfUsersToSuspend, ILogger log);
     }
 }
