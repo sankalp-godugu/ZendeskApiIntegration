@@ -409,24 +409,31 @@ namespace ZendeskApiIntegration.App.Services
         }
         public async Task<List<User>> GetInactiveUsers(Filter filter, ILogger logger)
         {
-            List<User> users = await GetUsers($"type:{Constants.User}", logger);
+            List<User> endUsers = await GetUsers($"type:{Constants.User} role:{Constants.EndUser} -organization_id:{Constants.OrgNations} -organization_id:none", logger);
 
-            return users.Where(u =>
-                   u.Role == Constants.EndUser
-                && u.OrganizationId is not null
-                && u.OrganizationId != 16807567180439
-                && u.LastLoginAt is not null
+            return endUsers.Where(u =>
+                   //u.Role == Constants.EndUser
+                //&& u.OrganizationId is not null
+                //&& u.OrganizationId != Constants.OrgNations
+                   u.LastLoginAt is not null
                 && u.LastLoginAtDt < DateTime.Now.AddMonths(-1)
             ).ToList();
         }
-        public async Task SendEmailMultiple(List<User> users, ILogger log)
+
+        /// <summary>
+        /// sends an email to each non-Nations end user part of an org that is at risk of suspension due to inactivity
+        /// </summary>
+        /// <param name="users"></param>
+        /// <param name="log"></param>
+        /// <returns></returns>
+        public async Task<int> SendEmailMultiple(List<User> users, ILogger log)
         {
             string smtpServer = Environment.GetEnvironmentVariable("smtpServer");
             int smtpPort = int.Parse(Environment.GetEnvironmentVariable("smtpPort"));
             string smtpUsername = Environment.GetEnvironmentVariable("smtpUsername");
             string smtpPassword = Environment.GetEnvironmentVariable("smtpPassword");
             string fromAddress = Environment.GetEnvironmentVariable("fromAddress");
-            string subject = Environment.GetEnvironmentVariable("subject");
+            string subject = Environment.GetEnvironmentVariable("subjectEndUsers");
             string loginBy = DateTime.Now.AddDays(7).Date.ToLongDateString();
 
             using SmtpClient client = new(smtpServer, smtpPort)
@@ -439,7 +446,7 @@ namespace ZendeskApiIntegration.App.Services
             foreach (var user in users)
             {
                 string toAddress = user.Email;
-                string body = GetBody(user.Name, loginBy);
+                string body = GetBodyEndUser(user.Name, loginBy);
 
                 MailMessage message = new(fromAddress, toAddress, subject, body)
                 {
@@ -457,19 +464,20 @@ namespace ZendeskApiIntegration.App.Services
                 catch (Exception ex)
                 {
                     log.LogInformation($"Failed to send email: {ex.Message}");
+                    return -1;
                 }
-                i++;
             }
+            return 0;
         }
-        public async Task SendEmail(List<User> users, ILogger log)
+        public async Task<int> SendEmail(List<User> users, ILogger log)
         {
             string smtpServer = Environment.GetEnvironmentVariable("smtpServer");
             int smtpPort = int.Parse(Environment.GetEnvironmentVariable("smtpPort"));
             string smtpUsername = Environment.GetEnvironmentVariable("smtpUsername");
             string smtpPassword = Environment.GetEnvironmentVariable("smtpPassword");
             string fromAddress = Environment.GetEnvironmentVariable("fromAddress");
-            string toAddress = Environment.GetEnvironmentVariable("toAddress");
-            string subject = Environment.GetEnvironmentVariable("subject");
+            string toAddress = "sankalp.godugu@nationsbenefits.com";// Environment.GetEnvironmentVariable("toAddress");
+            string subject = Environment.GetEnvironmentVariable("subjectClientServices");
 
             using SmtpClient client = new(smtpServer, smtpPort)
             {
@@ -484,8 +492,8 @@ namespace ZendeskApiIntegration.App.Services
                 IsBodyHtml = false
             };
 
-            CreateWorkbook(["Organization", "End User", "Email"], Constants.ListOfEndUsersCurr);
-            await PopulateWorkbook(users, Constants.ListOfEndUsersCurr);
+            CreateWorkbook(Constants.ListOfEndUsersCurr);
+            await PopulateWorkbook(["Organization", "End User", "Email"], users, Constants.ListOfEndUsersCurr);
 
             Attachment attachment = new(Constants.ListOfEndUsersCurr);
             message.Attachments.Add(attachment);
@@ -501,7 +509,9 @@ namespace ZendeskApiIntegration.App.Services
             catch (Exception ex)
             {
                 log.LogInformation($"Failed to send email: {ex.Message}");
+                return -1;
             }
+            return 0;
         }
 
         public async Task<UpdateManyTicketsResponse> SuspendUsers(bool shouldSuspend, List<User> users, ILogger log)
@@ -544,7 +554,7 @@ namespace ZendeskApiIntegration.App.Services
             return new UpdateManyTicketsResponse();
         }
 
-        private static string GetBody(string name, string loginBy) => @$"
+        private static string GetBodyEndUser(string name, string loginBy) => @$"
 Dear {name},
 
 We have noticed that there has been no activity on your NationsBenefits Zendesk Help Center account for some time. In order to ensure the security and integrity of our platform, we kindly ask that you log into your account within the next 7 days. If no login activity is recorded by {loginBy}, your account will be suspended for security purposes.
@@ -606,7 +616,22 @@ Note: This email and any attachments may contain information that is confidentia
                 _ = Directory.CreateDirectory(directoryPath);
             }
 
-            return File.Exists(filePath) ? new XLWorkbook(filePath) : new XLWorkbook();
+            int numberAttempts = 0;
+            int maxAttempts = 5;
+            while (numberAttempts <= maxAttempts)
+            {
+                try
+                {
+                    return File.Exists(filePath) ? new XLWorkbook(filePath) : new XLWorkbook();
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.Message);
+                    Thread.Sleep(5000);
+                    numberAttempts++;
+                }
+            }
+            return new();
         }
 
         private static IXLWorksheet OpenWorksheet(XLWorkbook workbook, string name = "End Users", int pos = 1)

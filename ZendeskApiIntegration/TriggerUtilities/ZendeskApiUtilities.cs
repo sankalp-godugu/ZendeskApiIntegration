@@ -46,8 +46,8 @@ namespace ZendeskApiIntegration.TriggerUtilities
                         new() { Id = 19641229464983, Email = "ahstephens01@gmail.com", Name = "Austin Stephens", Suspended = false },
                         new() { Id = 18139432493847, Email = "sankalp.godugu@nationsbenefits.com", Name = "Sankalp Godugu", Suspended = false }
                     };*/
-                    //await zendeskClientService.SendEmailMultiple(listOfUsersToSuspend, log);
                     await zendeskClientService.SendEmail(listOfUsersToSuspend, log);
+                    //await zendeskClientService.SendEmailMultiple(listOfUsersToSuspend, log);
                     await zendeskClientService.SuspendUsers(true, listOfUsersToSuspend, log);
                 });
 

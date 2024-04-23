@@ -37,5 +37,8 @@
 
         // roles
         public static readonly string EndUser = "end-user";
+
+        // orgs
+        public static readonly long OrgNations = 16807567180439;
     }
 }

@@ -45,7 +45,7 @@ namespace ZendeskApiIntegration.App.Interfaces
         public Task DeleteTickets(ILogger logger);
 
         public Task<List<Ticket>> GetTicketsWithIncorrectAddress(ILogger logger);
-        public Task SendEmailMultiple(List<User> users, ILogger log);
-        public Task SendEmail(List<User> users, ILogger log);
+        public Task<int> SendEmailMultiple(List<User> users, ILogger log);
+        public Task<int> SendEmail(List<User> users, ILogger log);
     }
 }
