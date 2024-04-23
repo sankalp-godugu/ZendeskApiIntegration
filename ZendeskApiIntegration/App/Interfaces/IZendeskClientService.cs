@@ -28,7 +28,7 @@ namespace ZendeskApiIntegration.App.Interfaces
         /// </summary>
         /// <param name="logger"></param>
         /// <returns>count of users suspended</returns>
-        public Task<ShowJobStatusResponse?> SuspendUsers(bool shouldSuspend, List<User> users, ILogger logger);
+        public Task<int?> SuspendUsers(bool shouldSuspend, List<User> users, ILogger logger);
 
         /// <summary>
         /// Get contact list download Url from Zendesk asychronously.

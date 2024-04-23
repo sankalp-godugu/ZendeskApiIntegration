@@ -5,7 +5,7 @@ namespace ZendeskApiIntegration.Model.Requests
     public class UpdateManyTicketsRequest_Suspended
     {
         [JsonProperty("user")]
-        public UserCustom UserCustom { get; set; }
+        public required UserCustom UserCustom { get; set; }
     }
 
     public class UserCustom

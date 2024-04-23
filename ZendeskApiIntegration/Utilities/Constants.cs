@@ -2,9 +2,6 @@
 {
     public static class Constants
     {
-        public const string Ticket = "ticket";
-        public const string User = "user";
-        public const string Organization = "organization";
         public const int PageSize = 1000;
         public const string MeaTrainingCohort415 = @"C:\Users\Sankalp.Godugu\Downloads\4.15 MEA Training Cohort 4.12.24 Final.xlsx";
         public static readonly Dictionary<long, string> Groups = new()
@@ -36,12 +33,6 @@
         public const string Status = "Status";
         public const string EndUsers = "End Users";
 
-        // roles
-        public const string EndUser = "end-user";
-
-        // orgs
-        public const long OrgNations = 16807567180439;
-
         //testing
         public static readonly Dictionary<string, string> TestUsers = new()
         {
@@ -50,16 +41,54 @@
             { "Judson Noel", "jnoel@nationsbenefits.com" },
         };
 
-        public const string MyEmail = "sankalp.godugu@nationsbenefits.com";
-        public const string TestEmailAustinPersonal = "ahstephens01@gmail.com";
-        public const string TestEmailAustinNations = "astephens@nationsbenefits.com";
-        public const string TestEmailJudsonNations = "jnoel@nationsbenefits.com";
-        public const string MyName = "Sankalp Godugu";
-        public const string TestNameAustin = "Austin Stephens";
-        public const string TestNameJudson = "Judson Noel";
-
         // timers
         public const int MaxAttempts = 5;
         public const int SleepTime = 5000;
+
+        public const string MemberSupportEmail = "https://membersupport.nationsbenefits.com/";
+    }
+
+    public static class Emails
+    {
+        public const string MyEmail = "sankalp.godugu@nationsbenefits.com";
+        public const string EmailTestAustinPersonal = "ahstephens01@gmail.com";
+        public const string EmailNationsAustinStephens = "astephens@nationsbenefits.com";
+        public const string EmailNationsDavidDandridge = "ddandridge@nationsbenefits.com";
+        public const string EmailTestJudson = "judsonzdtest@nationsbenefits.com";
+        public const string EmailTestJudson2 = "sir.j.noel@gmail.com";
+    }
+
+    public static class Users
+    {
+        public const string MyName = "Sankalp Godugu";
+        public const string TestNameAustin = "Austin Stephens";
+        public const string TestNameJudson = "Judson Noel";
+    }
+
+    public static class Types
+    {
+        public const string Ticket = "ticket";
+        public const string User = "user";
+        public const string Organization = "organization";
+    }
+
+    public static class Roles
+    {
+        // roles
+        public const string EndUser = "end-user";
+        public const string Agent = "agent";
+        public const string Admin = "admin";
+    }
+
+    public static class Organizations
+    {
+        // orgs
+        public const long Nations = 16807567180439;
+    }
+
+    public static class Statuses
+    {
+        public const string Completed = "Completed";
+        public const string Updated = "Updated";
     }
 }

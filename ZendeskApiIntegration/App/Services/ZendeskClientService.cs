@@ -225,7 +225,7 @@ namespace ZendeskApiIntegration.App.Services
 
         public async Task<List<Ticket>> GetTicketsWithIncorrectAddress(ILogger logger)
         {
-            return await GetTickets($"type:{Constants.Ticket} description:wrong address description:incorrect address");
+            return await GetTickets($"type:{Types.Ticket} description:wrong address description:incorrect address");
         }
 
         #endregion
@@ -245,7 +245,7 @@ namespace ZendeskApiIntegration.App.Services
                 }
 
                 List<Ticket> tickets = [];
-                HttpResponseMessage response = await client.GetAsync($"search/export?filter[type]={Constants.Ticket}&page[size]={Constants.PageSize}&query={query}");
+                HttpResponseMessage response = await client.GetAsync($"search/export?filter[type]={Types.Ticket}&page[size]={Constants.PageSize}&query={query}");
                 string result = await response.Content.ReadAsStringAsync();
                 ExportSearchResultsResponse? exportSearchResultsResponse = JsonConvert.DeserializeObject<ExportSearchResultsResponse>(result);
 
@@ -363,7 +363,7 @@ namespace ZendeskApiIntegration.App.Services
                 }
 
                 List<User> users = [];
-                HttpResponseMessage response = await client.GetAsync($"search/export?filter[type]={Constants.User}&page[size]={Constants.PageSize}&query={query}");
+                HttpResponseMessage response = await client.GetAsync($"search/export?filter[type]={Types.User}&page[size]={Constants.PageSize}&query={query}");
                 ExportSearchResultsResponse? exportSearchResultsResponse = new();
                 if (response.IsSuccessStatusCode)
                 {
@@ -409,7 +409,7 @@ namespace ZendeskApiIntegration.App.Services
         }
         public async Task<List<User>> GetInactiveUsers(Filter filter, ILogger logger)
         {
-            List<User> endUsers = await GetUsers($"type:{Constants.User} role:{Constants.EndUser} -organization_id:{Constants.OrgNations} -organization_id:none", logger);
+            List<User> endUsers = await GetUsers($"type:{filter.Type} role:{filter.Role} -organization_id:{filter.OrgId} -organization_id:none", logger);
 
             return endUsers.Where(u =>
                    //u.Role == Constants.EndUser
@@ -436,11 +436,11 @@ namespace ZendeskApiIntegration.App.Services
             string subject = Environment.GetEnvironmentVariable("subjectEndUsers");
             string loginBy = DateTime.Now.AddDays(7).Date.ToLongDateString();
 
-            SmtpClient client = new(smtpServer, smtpPort)
+            using SmtpClient client = new(smtpServer, smtpPort)
             {
                 EnableSsl = true,
                 Credentials = new NetworkCredential(smtpUsername, smtpPassword),
-                Timeout = 10
+                Timeout = 10000
             };
             foreach (User user in users)
             {
@@ -457,22 +457,22 @@ namespace ZendeskApiIntegration.App.Services
                 {
                     try
                     {
-                        //if (toAddress == Constants.TestEmail)
-                        {
-                            await client.SendMailAsync(message);
-                            log.LogInformation("Email sent successfully.");
-                            break;
-                        }
+                        log.LogInformation($"Sending email to end user {user.Name}...");
+                        await client.SendMailAsync(message);
+                        log.LogInformation("Email sent successfully.");
+                        break;
                     }
-                    catch (SmtpException ex)
+                    catch (SmtpException)
                     {
                         log.LogInformation($"Sending email timed out.");
                     }
                     catch (Exception ex)
                     {
                         log.LogInformation($"Failed to send email: {ex.Message}");
-                        return -1;
                     }
+                    numAttempts++;
+                    if (numAttempts > Constants.MaxAttempts) return -1;
+                    Thread.Sleep(Constants.SleepTime);
                 }
             }
             return 0;
@@ -491,15 +491,14 @@ namespace ZendeskApiIntegration.App.Services
             string smtpUsername = Environment.GetEnvironmentVariable("smtpUsername");
             string smtpPassword = Environment.GetEnvironmentVariable("smtpPassword");
             string fromAddress = Environment.GetEnvironmentVariable("fromAddress");
-            string toAddress = Constants.TestEmailJudsonNations;// Environment.GetEnvironmentVariable("toAddress");
-            string ccEmail = Constants.TestEmailJudsonNations;// Environment.GetEnvironmentVariable("ccEmail");
+            string toAddress = Emails.EmailTestAustinPersonal;// Environment.GetEnvironmentVariable("toAddress");
             string subject = Environment.GetEnvironmentVariable("subjectClientServices");
 
-            SmtpClient client = new(smtpServer, smtpPort)
+            using SmtpClient client = new(smtpServer, smtpPort)
             {
                 EnableSsl = true,
                 Credentials = new NetworkCredential(smtpUsername, smtpPassword),
-                Timeout = 10
+                Timeout = 10000
             };
 
             string body = GetBodyClientServices();
@@ -508,7 +507,8 @@ namespace ZendeskApiIntegration.App.Services
             {
                 IsBodyHtml = false
             };
-            message.CC.Add(ccEmail);
+            message.CC.Add(Emails.EmailTestAustinPersonal); // Environment.GetEnvironmentVariable("ccEmail");
+            //message.CC.Add(Emails.EmailNationsDavidDandridge);
 
             CreateWorkbook(Constants.ListOfEndUsersCurr);
             await PopulateWorkbook(["Organization", "End User", "Email"], users, Constants.ListOfEndUsersCurr);
@@ -516,18 +516,27 @@ namespace ZendeskApiIntegration.App.Services
             Attachment attachment = new(Constants.ListOfEndUsersCurr);
             message.Attachments.Add(attachment);
 
-            try
+            int numAttempts = 0;
+            while (numAttempts < Constants.MaxAttempts)
             {
-                //if (toAddress == Constants.TestEmailNations)
+                try
                 {
+                    log.LogInformation($"Sending email to Client Services...");
                     await client.SendMailAsync(message);
                     log.LogInformation("Email sent successfully.");
+                    break;
                 }
-            }
-            catch (Exception ex)
-            {
-                log.LogInformation($"Failed to send email: {ex.Message}");
-                return -1;
+                catch (SmtpException)
+                {
+                    log.LogInformation($"Sending email timed out.");
+                }
+                catch (Exception ex)
+                {
+                    log.LogInformation($"Failed to send email: {ex.Message}");
+                }
+                numAttempts++;
+                if (numAttempts > Constants.MaxAttempts) return -1;
+                Thread.Sleep(Constants.SleepTime);
             }
             return 0;
         }
@@ -539,12 +548,15 @@ namespace ZendeskApiIntegration.App.Services
         /// <param name="endUsers">list of inactive end users from this week's report</param>
         /// <param name="log"></param>
         /// <returns></returns>
-        public async Task<ShowJobStatusResponse?> SuspendUsers(bool shouldSuspend, List<User> endUsers, ILogger log)
+        public async Task<int?> SuspendUsers(bool shouldSuspend, List<User> endUsers, ILogger log)
         {
             try
             {
                 List<User> endUsersInLastReport = ConvertWorkbookToList(Constants.ListOfEndUsersPrev);
-                if (endUsersInLastReport is null) return null;
+                if (endUsersInLastReport is null)
+                {
+                    return null;
+                }
 
                 UpdateManyTicketsRequest_Suspended user = new()
                 {
@@ -559,19 +571,31 @@ namespace ZendeskApiIntegration.App.Services
 
                 string json = JsonConvert.SerializeObject(user);
                 StringContent sc = new(json, Encoding.UTF8, "application/json");
-                string userIds = string.Join(',', endUsersToSuspend.Select(u => u.Id));
+                string userIds = string.Join(',', endUsers.Select(u => u.Id));
                 HttpClient client = httpClientFactory.CreateClient("ZD");
 
-                HttpResponseMessage response = await client.PutAsync($"users/update_many?ids={userIds}", sc);
-                if (response.IsSuccessStatusCode)
+                log.LogInformation($"Suspending end users...");
+                int numAttempts = 0;
+                while (numAttempts < Constants.MaxAttempts)
                 {
-                    string result = await response.Content.ReadAsStringAsync();
-                    UpdateManyTicketsResponse? jobStatus = JsonConvert.DeserializeObject<UpdateManyTicketsResponse>(result);
-                    response = await client.GetAsync($"job_statuses/{jobStatus.JobStatus.Id}");
+                    HttpResponseMessage response = await client.PutAsync($"users/update_many?ids={userIds}", sc);
                     if (response.IsSuccessStatusCode)
                     {
-                        result = await response.Content.ReadAsStringAsync();
-                        return JsonConvert.DeserializeObject<ShowJobStatusResponse>(result);
+                        log.LogInformation($"Queued job to suspend end users...");
+                        string result = await response.Content.ReadAsStringAsync();
+                        UpdateManyTicketsResponse? jobStatus = JsonConvert.DeserializeObject<UpdateManyTicketsResponse>(result);
+                        response = await client.GetAsync($"job_statuses/{jobStatus.JobStatus.Id}");
+                        if (response.IsSuccessStatusCode)
+                        {
+                            ShowJobStatusResponse showJobStatusResponse;
+                            //log.LogInformation($"End users suspended successfully...");
+                            do
+                            {
+                                result = await response.Content.ReadAsStringAsync();
+                                showJobStatusResponse = JsonConvert.DeserializeObject<ShowJobStatusResponse>(result);
+
+                            } while (showJobStatusResponse.JobStatus.Results.Any(r => r.Status != Statuses.Updated && !r.Success));
+                        }
                     }
                 }
             }
@@ -592,7 +616,7 @@ We have noticed that there has been no activity on your NationsBenefits Zendesk 
 
 Please take a moment to log in by clicking on the link below:
 
-https://membersupport.nationsbenefits.com/
+{Constants.MemberSupportEmail}
 
 Thank you for your attention on this matter.
 
@@ -603,13 +627,12 @@ NationsBenefits Zendesk Team
 Note: This email and any attachments may contain information that is confidential and/or privileged and prohibited from disclosure or unauthorized use under applicable law. If you are not the intended recipient, you are hereby notified that any disclosure, copying or distribution or taking of action in reliance upon the contents of this transmission is strictly prohibited. If you have received this email in error, you are instructed to notify the sender by reply email and delete it to the fullest extent possible once you have notified the sender of the error.
 ";
         }
-
         private static string GetBodyClientServices()
         {
             return @$"
-Dear Client Services,
+Hi Team,
 
-Please see attached list of all end users suspended in Zendesk due to inactivity/not logging in within 30 days.
+Please see attached list of all external end users suspended in Zendesk due to inactivity/not logging in within 30 days.
 
 Let me know if you have any questions.
 
@@ -620,7 +643,6 @@ NationsBenefits Zendesk Team
 Note: This email and any attachments may contain information that is confidential and/or privileged and prohibited from disclosure or unauthorized use under applicable law. If you are not the intended recipient, you are hereby notified that any disclosure, copying or distribution or taking of action in reliance upon the contents of this transmission is strictly prohibited. If you have received this email in error, you are instructed to notify the sender by reply email and delete it to the fullest extent possible once you have notified the sender of the error.
 ";
         }
-
         private static void SaveWorkbook(List<User> users)
         {
             using XLWorkbook workbook = OpenWorkbook(Constants.ListOfEndUsersCurr);
@@ -642,7 +664,6 @@ Note: This email and any attachments may contain information that is confidentia
                 row++;
             }
         }
-
         private static XLWorkbook OpenWorkbook(string filePath)
         {
             string directoryPath = Path.GetDirectoryName(filePath);
@@ -668,20 +689,17 @@ Note: This email and any attachments may contain information that is confidentia
             }
             return new();
         }
-
         private static IXLWorksheet OpenWorksheet(XLWorkbook workbook, string name = Constants.EndUsers, int pos = 1)
         {
             bool sheetExists = workbook.TryGetWorksheet(name, out IXLWorksheet worksheet);
             return sheetExists ? worksheet : workbook.AddWorksheet(name, pos);
         }
-
         private static void CreateWorkbook(string filePath)
         {
             using XLWorkbook workbook = OpenWorkbook(filePath);
             IXLWorksheet worksheet = OpenWorksheet(workbook);
             workbook.SaveAs(filePath);
         }
-
         private async Task PopulateWorkbook(string[] headers, List<User> users, string filePath)
         {
             Dictionary<long, Task<HttpResponseMessage>> tasks = [];
@@ -716,7 +734,6 @@ Note: This email and any attachments may contain information that is confidentia
 
             workbook.Save();
         }
-
         private static List<User>? ConvertWorkbookToList(string filePath)
         {
             List<User> userList = [];
