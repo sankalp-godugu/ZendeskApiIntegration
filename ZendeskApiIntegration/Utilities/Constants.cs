@@ -43,7 +43,20 @@
         public const long OrgNations = 16807567180439;
 
         //testing
+        public static readonly Dictionary<string, string> TestUsers = new()
+        {
+            { "Sankalp Godugu", "sankalp.godugu@nationsbenefits.com" },
+            { "Austin Stephens", "astephens@nationsbenefits.com"  },
+            { "Judson Noel", "jnoel@nationsbenefits.com" },
+        };
+
         public const string MyEmail = "sankalp.godugu@nationsbenefits.com";
+        public const string TestEmailAustinPersonal = "ahstephens01@gmail.com";
+        public const string TestEmailAustinNations = "astephens@nationsbenefits.com";
+        public const string TestEmailJudsonNations = "jnoel@nationsbenefits.com";
+        public const string MyName = "Sankalp Godugu";
+        public const string TestNameAustin = "Austin Stephens";
+        public const string TestNameJudson = "Judson Noel";
 
         // timers
         public const int MaxAttempts = 5;

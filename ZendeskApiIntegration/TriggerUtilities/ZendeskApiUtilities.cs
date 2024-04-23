@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using ZendeskApiIntegration.App.Interfaces;
 using ZendeskApiIntegration.DataLayer.Interfaces;
 using ZendeskApiIntegration.Model;
+using Constants = ZendeskApiIntegration.Utilities.Constants;
 
 namespace ZendeskApiIntegration.TriggerUtilities
 {
@@ -34,20 +35,23 @@ namespace ZendeskApiIntegration.TriggerUtilities
 
                     //await zendeskClientService.CreateGroupMemberships(log);
 
-                    Filter filter = new()
+                    //Filter filter = new()
+                    //{
+                    //    LastLoginAt = DateTime.Now.AddMonths(-1).Date.ToString("yyyy-MM-dd"),
+                    //    OrgId = 16807567180439,
+                    //    Role = "end-user"
+                    //};
+
+                    //List<User> listOfUsersToSuspend = await zendeskClientService.GetInactiveUsers(filter, log);
+                    var listOfUsersToSuspend = new List<User>
                     {
-                        LastLoginAt = DateTime.Now.AddMonths(-1).Date.ToString("yyyy-MM-dd"),
-                        OrgId = 16807567180439,
-                        Role = "end-user"
+                        new() { Id = 19641229464983, Email = Constants.TestEmailJudsonNations, Name = Constants.TestNameJudson, Suspended = false },
+                        //new() { Id = 19641229464983, Email = Constants.TestEmailAustinNations, Name = Constants.TestNameAustin, Suspended = false },
+                        //new() { Id = 18139432493847, Email = Constants.MyEmail, Name = Constants.MyName, Suspended = false }
                     };
-                    List<User> listOfUsersToSuspend = await zendeskClientService.GetInactiveUsers(filter, log);
-                    /*var listOfUsersToSuspend = new List<User>
-                    {
-                        new() { Id = 19641229464983, Email = "ahstephens01@gmail.com", Name = "Austin Stephens", Suspended = false },
-                        new() { Id = 18139432493847, Email = "sankalp.godugu@nationsbenefits.com", Name = "Sankalp Godugu", Suspended = false }
-                    };*/
-                    //await zendeskClientService.SendEmailMultiple(listOfUsersToSuspend, log);
-                    //await zendeskClientService.SendEmail(listOfUsersToSuspend, log);
+
+                    //var sendEmailMultipleResult = await zendeskClientService.SendEmailMultiple(listOfUsersToSuspend, log);
+                    var sendEmailResult = await zendeskClientService.SendEmail(listOfUsersToSuspend, log);
                     _ = await zendeskClientService.SuspendUsers(true, listOfUsersToSuspend, log);
                 });
 

@@ -436,10 +436,11 @@ namespace ZendeskApiIntegration.App.Services
             string subject = Environment.GetEnvironmentVariable("subjectEndUsers");
             string loginBy = DateTime.Now.AddDays(7).Date.ToLongDateString();
 
-            using SmtpClient client = new(smtpServer, smtpPort)
+            SmtpClient client = new(smtpServer, smtpPort)
             {
                 EnableSsl = true,
-                Credentials = new NetworkCredential(smtpUsername, smtpPassword)
+                Credentials = new NetworkCredential(smtpUsername, smtpPassword),
+                Timeout = 10
             };
             foreach (User user in users)
             {
@@ -451,18 +452,27 @@ namespace ZendeskApiIntegration.App.Services
                     IsBodyHtml = false
                 };
 
-                try
+                int numAttempts = 0;
+                while (numAttempts < Constants.MaxAttempts)
                 {
-                    if (toAddress == "sankalp.godugu@nationsbenefits.com")
+                    try
                     {
-                        await client.SendMailAsync(message);
-                        log.LogInformation("Email sent successfully.");
+                        //if (toAddress == Constants.TestEmail)
+                        {
+                            await client.SendMailAsync(message);
+                            log.LogInformation("Email sent successfully.");
+                            break;
+                        }
                     }
-                }
-                catch (Exception ex)
-                {
-                    log.LogInformation($"Failed to send email: {ex.Message}");
-                    return -1;
+                    catch (SmtpException ex)
+                    {
+                        log.LogInformation($"Sending email timed out.");
+                    }
+                    catch (Exception ex)
+                    {
+                        log.LogInformation($"Failed to send email: {ex.Message}");
+                        return -1;
+                    }
                 }
             }
             return 0;
@@ -481,14 +491,15 @@ namespace ZendeskApiIntegration.App.Services
             string smtpUsername = Environment.GetEnvironmentVariable("smtpUsername");
             string smtpPassword = Environment.GetEnvironmentVariable("smtpPassword");
             string fromAddress = Environment.GetEnvironmentVariable("fromAddress");
-            string toAddress = Constants.MyEmail;// Environment.GetEnvironmentVariable("toAddress");
-            string ccEmail = Constants.MyEmail;// Environment.GetEnvironmentVariable("ccEmail");
+            string toAddress = Constants.TestEmailJudsonNations;// Environment.GetEnvironmentVariable("toAddress");
+            string ccEmail = Constants.TestEmailJudsonNations;// Environment.GetEnvironmentVariable("ccEmail");
             string subject = Environment.GetEnvironmentVariable("subjectClientServices");
 
-            using SmtpClient client = new(smtpServer, smtpPort)
+            SmtpClient client = new(smtpServer, smtpPort)
             {
                 EnableSsl = true,
-                Credentials = new NetworkCredential(smtpUsername, smtpPassword)
+                Credentials = new NetworkCredential(smtpUsername, smtpPassword),
+                Timeout = 10
             };
 
             string body = GetBodyClientServices();
@@ -507,7 +518,7 @@ namespace ZendeskApiIntegration.App.Services
 
             try
             {
-                if (toAddress == "sankalp.godugu@nationsbenefits.com")
+                //if (toAddress == Constants.TestEmailNations)
                 {
                     await client.SendMailAsync(message);
                     log.LogInformation("Email sent successfully.");
@@ -598,7 +609,7 @@ Note: This email and any attachments may contain information that is confidentia
             return @$"
 Dear Client Services,
 
-Please see attached list of all end users suspended in Zendesk due to inactivity/not logging in with 30 days.
+Please see attached list of all end users suspended in Zendesk due to inactivity/not logging in within 30 days.
 
 Let me know if you have any questions.
 
