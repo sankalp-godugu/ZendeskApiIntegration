@@ -11,7 +11,8 @@
         "fromAddress": "donotreply_zendesk@nationsbenefits.com",
         "subjectEndUsers": "Action Needed: Login to Your NationsBenefits Zendesk Account Within 7 Days",
         "subjectClientServices": "Zendesk End User Suspension List",
-        "toAddress": "cs@nationsbenefits.com"
+        "toAddress": "cs@nationsbenefits.com",
+        "ccEmail": "businessengineering@nationsbenefits.com"
       }
     },
     "Docker": {

@@ -407,6 +407,8 @@ namespace ZendeskApiIntegration.App.Services
             }
             return [];
         }
+
+
         public async Task<List<User>> GetInactiveUsers(Filter filter, ILogger logger)
         {
             List<User> endUsers = await GetUsers($"type:{Constants.User} role:{Constants.EndUser} -organization_id:{Constants.OrgNations} -organization_id:none", logger);
@@ -423,9 +425,9 @@ namespace ZendeskApiIntegration.App.Services
         /// <summary>
         /// sends an email to each non-Nations end user part of an org that is at risk of suspension due to inactivity
         /// </summary>
-        /// <param name="users"></param>
+        /// <param name="users">list of inactive non-Nations end users that are part of an organization</param>
         /// <param name="log"></param>
-        /// <returns></returns>
+        /// <returns>0 if success, -1 if fail</returns>
         public async Task<int> SendEmailMultiple(List<User> users, ILogger log)
         {
             string smtpServer = Environment.GetEnvironmentVariable("smtpServer");
@@ -469,6 +471,13 @@ namespace ZendeskApiIntegration.App.Services
             }
             return 0;
         }
+
+        /// <summary>
+        /// sends an email to client services with list of end users that have been suspended
+        /// </summary>
+        /// <param name="users">list of inactive non-Nations end users that are part of an organization</param>
+        /// <param name="log"></param>
+        /// <returns>0 if success, -1 if fail</returns>
         public async Task<int> SendEmail(List<User> users, ILogger log)
         {
             string smtpServer = Environment.GetEnvironmentVariable("smtpServer");
@@ -476,7 +485,8 @@ namespace ZendeskApiIntegration.App.Services
             string smtpUsername = Environment.GetEnvironmentVariable("smtpUsername");
             string smtpPassword = Environment.GetEnvironmentVariable("smtpPassword");
             string fromAddress = Environment.GetEnvironmentVariable("fromAddress");
-            string toAddress = "sankalp.godugu@nationsbenefits.com";// Environment.GetEnvironmentVariable("toAddress");
+            string toAddress = Constants.MyEmail;// Environment.GetEnvironmentVariable("toAddress");
+            string ccEmail = Constants.MyEmail;// Environment.GetEnvironmentVariable("ccEmail");
             string subject = Environment.GetEnvironmentVariable("subjectClientServices");
 
             using SmtpClient client = new(smtpServer, smtpPort)
@@ -491,6 +501,7 @@ namespace ZendeskApiIntegration.App.Services
             {
                 IsBodyHtml = false
             };
+            message.CC.Add(ccEmail);
 
             CreateWorkbook(Constants.ListOfEndUsersCurr);
             await PopulateWorkbook(["Organization", "End User", "Email"], users, Constants.ListOfEndUsersCurr);
@@ -514,11 +525,18 @@ namespace ZendeskApiIntegration.App.Services
             return 0;
         }
 
-        public async Task<UpdateManyTicketsResponse> SuspendUsers(bool shouldSuspend, List<User> users, ILogger log)
+        /// <summary>
+        /// suspends users if appear in weekly report twice
+        /// </summary>
+        /// <param name="shouldSuspend">flag that determines whether to suspend or unsuspend users</param>
+        /// <param name="endUsers">list of inactive end users from this week's report</param>
+        /// <param name="log"></param>
+        /// <returns></returns>
+        public async Task<UpdateManyTicketsResponse> SuspendUsers(bool shouldSuspend, List<User> endUsers, ILogger log)
         {
             try
             {
-                List<User> usersFromPreviousReport = ConvertWorkbookToList(Constants.ListOfEndUsersPrev);
+                List<User> endUsersInLastReport = ConvertWorkbookToList(Constants.ListOfEndUsersPrev);
 
                 int numUsersSuspended = -1;
                 UpdateManyTicketsRequest_Suspended user = new()
@@ -528,9 +546,13 @@ namespace ZendeskApiIntegration.App.Services
                         Suspended = shouldSuspend
                     }
                 };
+
+                // get end users that appear in weekly report twice
+                var endUsersToSuspend = endUsers.Union(endUsersInLastReport);
+
                 string json = JsonConvert.SerializeObject(user);
                 StringContent sc = new(json, Encoding.UTF8, "application/json");
-                var userIds = string.Join(',', users.Select(u => u.Id));
+                var userIds = string.Join(',', endUsersToSuspend.Select(u => u.Id));
                 var client = httpClientFactory.CreateClient("ZD");
 
                 HttpResponseMessage response = await client.PutAsync($"users/update_many?ids={userIds}", sc);

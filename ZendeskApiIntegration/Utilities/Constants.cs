@@ -40,5 +40,8 @@
 
         // orgs
         public static readonly long OrgNations = 16807567180439;
+
+        //testing
+        public static readonly string MyEmail = "sankalp.godugu@nationsbenefits.com";
     }
 }
