@@ -112,8 +112,9 @@ public class User
     public UserFields? UserFields { get; set; }
 
     // custom fields
+    public DateTime? LastLoginAtDt => DateTime.TryParse(LastLoginAt, out DateTime LastLoginAtDt) ? LastLoginAtDt : null;
     public string? Status => Suspended == true ? "Suspended" : "Active";
-    public bool ShouldSuspend => DateTime.Parse(LastLoginAt) > DateTime.Now.AddMonths(-1);
+    public bool ShouldSuspend => LastLoginAtDt > DateTime.Now.AddMonths(-1);
 }
 
 public class UserFields

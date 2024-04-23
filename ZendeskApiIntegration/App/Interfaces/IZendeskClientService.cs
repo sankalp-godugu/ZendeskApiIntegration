@@ -21,7 +21,7 @@ namespace ZendeskApiIntegration.App.Interfaces
         /// </summary>
         /// <param name="logger">Logger.<see cref="ILogger"/></param>
         /// <returns>Returns the list of contacts from Zendesk.</returns>
-        public Task<List<User>> GetInactiveUsers(ILogger logger);
+        public Task<List<User>> GetInactiveUsers(Filter filter, ILogger logger);
 
         /// <summary>
         /// Suspends a list of users
@@ -45,7 +45,7 @@ namespace ZendeskApiIntegration.App.Interfaces
         public Task DeleteTickets(ILogger logger);
 
         public Task<List<Ticket>> GetTicketsWithIncorrectAddress(ILogger logger);
-        public Task SendEmailMultiple(List<User> listOfUsersToSuspend, ILogger log);
-        public Task SendEmail(string toAddress, string orgName, string name, ILogger log);
+        public Task SendEmailMultiple(List<User> users, ILogger log);
+        public Task SendEmail(List<User> users, ILogger log);
     }
 }

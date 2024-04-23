@@ -9,7 +9,9 @@
         "smtpUsername": "donotreply_zendesk@nationsbenefits.com",
         "smtpPassword": "_iDa4I/9G7%5\"o.7",
         "fromAddress": "donotreply_zendesk@nationsbenefits.com",
-        "subject": "Action Needed: Login to Your NationsBenefits Zendesk Account Within 7 Days"
+        "subjectForEndUsers": "Action Needed: Login to Your NationsBenefits Zendesk Account Within 7 Days",
+        "subjectForClientServices": "Zendesk End User Suspension List",
+        "toAddress": "cs@nationsbenefits.com"
       }
     },
     "Docker": {

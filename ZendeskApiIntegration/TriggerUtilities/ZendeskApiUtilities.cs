@@ -34,13 +34,20 @@ namespace ZendeskApiIntegration.TriggerUtilities
 
                     //await zendeskClientService.CreateGroupMemberships(log);
 
-                    List<User> listOfUsersToSuspend = await zendeskClientService.GetInactiveUsers(log);
-                    /*listOfUsersToSuspend = new List<User>
+                    Filter filter = new()
+                    {
+                        LastLoginAt = DateTime.Now.AddMonths(-1).Date.ToString("yyyy-MM-dd"),
+                        OrgId = 16807567180439,
+                        Role = "end-user"
+                    };
+                    List<User> listOfUsersToSuspend = await zendeskClientService.GetInactiveUsers(filter, log);
+                    /*var listOfUsersToSuspend = new List<User>
                     {
                         new() { Id = 19641229464983, Email = "ahstephens01@gmail.com", Name = "Austin Stephens", Suspended = false },
                         new() { Id = 18139432493847, Email = "sankalp.godugu@nationsbenefits.com", Name = "Sankalp Godugu", Suspended = false }
                     };*/
-                    await zendeskClientService.SendEmailMultiple(listOfUsersToSuspend, log);
+                    //await zendeskClientService.SendEmailMultiple(listOfUsersToSuspend, log);
+                    await zendeskClientService.SendEmail(listOfUsersToSuspend, log);
                     await zendeskClientService.SuspendUsers(true, listOfUsersToSuspend, log);
                 });
 

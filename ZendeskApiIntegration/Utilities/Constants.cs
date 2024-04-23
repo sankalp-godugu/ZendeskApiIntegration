@@ -24,13 +24,18 @@
             { 18731644124439, "Supervisor Callbacks" },
             { 18737030342295, "Transportation" }
         };
-        public static readonly string ListOfUsersStatusesCurr = @$"C:\Users\Sankalp.Godugu\OneDrive - NationsBenefits\Documents\Business\Zendesk Integration\EndUserSuspension\{DateTime.Now.Date.ToShortDateString()}";
-        public static readonly string ListOfUsersStatusesPrev = @$"C:\Users\Sankalp.Godugu\OneDrive - NationsBenefits\Documents\Business\Zendesk Integration\EndUserSuspension\{DateTime.Now.AddDays(-7).Date.ToShortDateString()}";
+
+        // file paths
+        public static readonly string ListOfEndUsersCurr = @$"C:\Users\Sankalp.Godugu\OneDrive - NationsBenefits\Documents\Business\Zendesk Integration\EndUserSuspension\{DateTime.Now.Date:M-dd}\EndUserSuspensionList_{DateTime.Now.Date:MM_dd_yyyy}.xlsx";
+        public static readonly string ListOfEndUsersPrev = @$"C:\Users\Sankalp.Godugu\OneDrive - NationsBenefits\Documents\Business\Zendesk Integration\EndUserSuspension\{DateTime.Now.Date:M-dd}\EndUserSUspensionList_{DateTime.Now.AddDays(-7).Date:MM_dd_yyyy}.xlsx";
 
         //column names
         public static readonly string Name = "Name";
         public static readonly string Email = "Email";
         public static readonly string LastLoginAt = "Last Logged In";
         public static readonly string Status = "Status";
+
+        // roles
+        public static readonly string EndUser = "end-user";
     }
 }

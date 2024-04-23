@@ -12,7 +12,7 @@ using ZendeskApiIntegration.Model;
 using ZendeskApiIntegration.Model.Requests;
 using ZendeskApiIntegration.Model.Responses;
 using ZendeskApiIntegration.Utilities;
-using static Microsoft.ApplicationInsights.MetricDimensionNames.TelemetryContext;
+using Filter = ZendeskApiIntegration.Model.Filter;
 using User = ZendeskApiIntegration.Model.User;
 
 namespace ZendeskApiIntegration.App.Services
@@ -407,34 +407,17 @@ namespace ZendeskApiIntegration.App.Services
             }
             return [];
         }
-        public async Task<List<User>> GetInactiveUsers(ILogger logger)
+        public async Task<List<User>> GetInactiveUsers(Filter filter, ILogger logger)
         {
-            string date = DateTime.Now.AddMonths(-1).Date.ToString("yyyy-MM-dd");
-            List<User> users = await GetUsers($"type:{Constants.User} role:end-user&last_login_at<{date}", logger);
-            List<User> usersNeverLoggedIn = [];
-            List<User> usersNotLoggedInPastMonth = [];
-            List<User> activeUsers = [];
+            List<User> users = await GetUsers($"type:{Constants.User}", logger);
 
-            foreach (User user in users)
-            {
-                bool isDate = DateTime.TryParse(user.LastLoginAt, out DateTime lastLoginAt);
-
-                if (!isDate)
-                {
-                    usersNeverLoggedIn.Add(user);
-                }
-                else if (lastLoginAt < DateTime.Now.AddMonths(-1))
-                {
-                    usersNotLoggedInPastMonth.Add(user);
-                }
-                else
-                {
-                    activeUsers.Add(user);
-                }
-            }
-
-            //return usersNotLoggedInPastMonth;
-            return [.. usersNeverLoggedIn, .. usersNotLoggedInPastMonth];
+            return users.Where(u =>
+                   u.Role == Constants.EndUser
+                && u.OrganizationId is not null
+                && u.OrganizationId != 16807567180439
+                && u.LastLoginAt is not null
+                && u.LastLoginAtDt < DateTime.Now.AddMonths(-1)
+            ).ToList();
         }
         public async Task SendEmailMultiple(List<User> users, ILogger log)
         {
@@ -478,13 +461,14 @@ namespace ZendeskApiIntegration.App.Services
                 i++;
             }
         }
-        public async Task SendEmail(string toAddress, string orgName, string name, ILogger log)
+        public async Task SendEmail(List<User> users, ILogger log)
         {
             string smtpServer = Environment.GetEnvironmentVariable("smtpServer");
             int smtpPort = int.Parse(Environment.GetEnvironmentVariable("smtpPort"));
             string smtpUsername = Environment.GetEnvironmentVariable("smtpUsername");
             string smtpPassword = Environment.GetEnvironmentVariable("smtpPassword");
             string fromAddress = Environment.GetEnvironmentVariable("fromAddress");
+            string toAddress = Environment.GetEnvironmentVariable("toAddress");
             string subject = Environment.GetEnvironmentVariable("subject");
 
             using SmtpClient client = new(smtpServer, smtpPort)
@@ -493,13 +477,18 @@ namespace ZendeskApiIntegration.App.Services
                 Credentials = new NetworkCredential(smtpUsername, smtpPassword)
             };
 
-            int i = 0;
             string body = GetBodyClientServices();
 
             MailMessage message = new(fromAddress, toAddress, subject, body)
             {
                 IsBodyHtml = false
             };
+
+            CreateWorkbook(["Organization", "End User", "Email"], Constants.ListOfEndUsersCurr);
+            await PopulateWorkbook(users, Constants.ListOfEndUsersCurr);
+
+            Attachment attachment = new(Constants.ListOfEndUsersCurr);
+            message.Attachments.Add(attachment);
 
             try
             {
@@ -513,14 +502,13 @@ namespace ZendeskApiIntegration.App.Services
             {
                 log.LogInformation($"Failed to send email: {ex.Message}");
             }
-            i++;
         }
 
         public async Task<UpdateManyTicketsResponse> SuspendUsers(bool shouldSuspend, List<User> users, ILogger log)
         {
             try
             {
-                List<User> usersFromPreviousReport = ConvertWorkbookToList(Constants.ListOfUsersStatusesPrev);
+                List<User> usersFromPreviousReport = ConvertWorkbookToList(Constants.ListOfEndUsersPrev);
 
                 int numUsersSuspended = -1;
                 UpdateManyTicketsRequest_Suspended user = new()
@@ -547,8 +535,6 @@ namespace ZendeskApiIntegration.App.Services
                         
                     }
                 }
-
-
             }
             catch (Exception ex)
             {
@@ -579,13 +565,9 @@ Note: This email and any attachments may contain information that is confidentia
         private static string GetBodyClientServices() => @$"
 Dear Client Services,
 
-We have noticed that there has been no activity on your NationsBenefits Zendesk Help Center account for some time. In order to ensure the security and integrity of our platform, we kindly ask that you log into your account within the next 7 days. If no login activity is recorded by , your account will be suspended for security purposes.
+Please see attached list of all end users suspended in Zendesk due to inactivity/not logging in with 30 days.
 
-Please take a moment to log in by clicking on the link below:
-
-https://membersupport.nationsbenefits.com/
-
-Thank you for your attention on this matter.
+Let me know if you have any questions.
 
 Regards,
 
@@ -596,7 +578,7 @@ Note: This email and any attachments may contain information that is confidentia
 
         private static void SaveWorkbook(List<User> users)
         {
-            using var workbook = OpenWorkbook(Constants.ListOfUsersStatusesCurr);
+            using var workbook = OpenWorkbook(Constants.ListOfEndUsersCurr);
 
             var worksheet = workbook.AddWorksheet("Users");
 
@@ -625,6 +607,58 @@ Note: This email and any attachments may contain information that is confidentia
             }
 
             return File.Exists(filePath) ? new XLWorkbook(filePath) : new XLWorkbook();
+        }
+
+        private static IXLWorksheet OpenWorksheet(XLWorkbook workbook, string name = "End Users", int pos = 1)
+        {
+            var sheetExists = workbook.TryGetWorksheet(name, out IXLWorksheet worksheet);
+            if (sheetExists)
+            {
+                return worksheet;
+            }
+            return workbook.AddWorksheet(name, pos);
+        }
+
+        private static void CreateWorkbook(string filePath)
+        {
+            using var workbook = OpenWorkbook(filePath);
+            var worksheet = OpenWorksheet(workbook);
+            workbook.SaveAs(filePath);
+        }
+
+        private async Task PopulateWorkbook(string[] headers, List<User> users, string filePath)
+        {
+            Dictionary<long,Task<HttpResponseMessage>> tasks = [];
+            var client = httpClientFactory.CreateClient("ZD");
+
+            using var workbook = OpenWorkbook(filePath);
+            var worksheet = workbook.Worksheet(1);
+
+            // populate header row
+            for (int i = 0; i < headers.Length; i++)
+            {
+                worksheet.Cell(1, i + 1).Value = headers[i];
+            }
+
+            // load API calls to get user's organization
+            foreach (var user in users)
+            {
+                tasks.Add(user.Id, client.GetAsync($"organizations/{user.OrganizationId}"));
+            }
+
+            // populate data rows
+            for (int i = 1; i < users.Count; i++)
+            {
+                HttpResponseMessage response = await tasks[users[i].Id];
+                var result = await response.Content.ReadAsStringAsync();
+                var org = JsonConvert.DeserializeObject<ShowOrganizationResponse>(result);
+
+                worksheet.Cell(i + 1, 1).Value = org?.Organization?.Name;
+                worksheet.Cell(i + 1, 2).Value = users[i].Name;
+                worksheet.Cell(i + 1, 3).Value = users[i].Email;
+            }
+
+            workbook.Save();
         }
 
         private List<User> ConvertWorkbookToList(string filePath)
