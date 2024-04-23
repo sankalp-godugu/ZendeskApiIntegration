@@ -3,7 +3,7 @@
     public class Filter
     {
         public long OrgId { get; set; }
-        public string Role { get; set; }
-        public string LastLoginAt { get; set; }
+        public required string Role { get; set; }
+        public required string LastLoginAt { get; set; }
     }
 }

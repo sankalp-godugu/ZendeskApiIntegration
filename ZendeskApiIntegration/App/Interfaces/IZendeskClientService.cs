@@ -28,7 +28,7 @@ namespace ZendeskApiIntegration.App.Interfaces
         /// </summary>
         /// <param name="logger"></param>
         /// <returns>count of users suspended</returns>
-        public Task<UpdateManyTicketsResponse> SuspendUsers(bool shouldSuspend, List<User> users, ILogger logger);
+        public Task<ShowJobStatusResponse?> SuspendUsers(bool shouldSuspend, List<User> users, ILogger logger);
 
         /// <summary>
         /// Get contact list download Url from Zendesk asychronously.
@@ -43,7 +43,6 @@ namespace ZendeskApiIntegration.App.Interfaces
         /// <param name="logger">Logger.<see cref="ILogger"/></param>
         /// <returns>Returns the list of contacts from Zendesk.</returns>
         public Task DeleteTickets(ILogger logger);
-
         public Task<List<Ticket>> GetTicketsWithIncorrectAddress(ILogger logger);
         public Task<int> SendEmailMultiple(List<User> users, ILogger log);
         public Task<int> SendEmail(List<User> users, ILogger log);

@@ -2,11 +2,11 @@
 {
     public static class Constants
     {
-        public static readonly string Ticket = "ticket";
-        public static readonly string User = "user";
-        public static readonly string Organization = "organization";
-        public static readonly int PageSize = 1000;
-        public static readonly string MeaTrainingCohort415 = @"C:\Users\Sankalp.Godugu\Downloads\4.15 MEA Training Cohort 4.12.24 Final.xlsx";
+        public const string Ticket = "ticket";
+        public const string User = "user";
+        public const string Organization = "organization";
+        public const int PageSize = 1000;
+        public const string MeaTrainingCohort415 = @"C:\Users\Sankalp.Godugu\Downloads\4.15 MEA Training Cohort 4.12.24 Final.xlsx";
         public static readonly Dictionary<long, string> Groups = new()
         {
             { 22245229281303, "Albertsons Marketplace" },
@@ -27,21 +27,26 @@
 
         // file paths
         public static readonly string ListOfEndUsersCurr = @$"C:\Users\Sankalp.Godugu\OneDrive - NationsBenefits\Documents\Business\Zendesk Integration\EndUserSuspension\{DateTime.Now.Date:M-dd}\EndUserSuspensionList_{DateTime.Now.Date:MM_dd_yyyy}.xlsx";
-        public static readonly string ListOfEndUsersPrev = @$"C:\Users\Sankalp.Godugu\OneDrive - NationsBenefits\Documents\Business\Zendesk Integration\EndUserSuspension\{DateTime.Now.Date:M-dd}\EndUserSUspensionList_{DateTime.Now.AddDays(-7).Date:MM_dd_yyyy}.xlsx";
+        public static readonly string ListOfEndUsersPrev = @$"C:\Users\Sankalp.Godugu\OneDrive - NationsBenefits\Documents\Business\Zendesk Integration\EndUserSuspension\{DateTime.Now.AddDays(-7):M-dd}\EndUserSUspensionList_{DateTime.Now.AddDays(-7).Date:MM_dd_yyyy}.xlsx";
 
         //column names
-        public static readonly string Name = "Name";
-        public static readonly string Email = "Email";
-        public static readonly string LastLoginAt = "Last Logged In";
-        public static readonly string Status = "Status";
+        public const string Name = "Name";
+        public const string Email = "Email";
+        public const string LastLoginAt = "Last Logged In";
+        public const string Status = "Status";
+        public const string EndUsers = "End Users";
 
         // roles
-        public static readonly string EndUser = "end-user";
+        public const string EndUser = "end-user";
 
         // orgs
-        public static readonly long OrgNations = 16807567180439;
+        public const long OrgNations = 16807567180439;
 
         //testing
-        public static readonly string MyEmail = "sankalp.godugu@nationsbenefits.com";
+        public const string MyEmail = "sankalp.godugu@nationsbenefits.com";
+
+        // timers
+        public const int MaxAttempts = 5;
+        public const int SleepTime = 5000;
     }
 }

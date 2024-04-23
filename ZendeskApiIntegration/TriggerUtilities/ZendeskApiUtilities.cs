@@ -47,8 +47,8 @@ namespace ZendeskApiIntegration.TriggerUtilities
                         new() { Id = 18139432493847, Email = "sankalp.godugu@nationsbenefits.com", Name = "Sankalp Godugu", Suspended = false }
                     };*/
                     //await zendeskClientService.SendEmailMultiple(listOfUsersToSuspend, log);
-                    await zendeskClientService.SendEmail(listOfUsersToSuspend, log);
-                    await zendeskClientService.SuspendUsers(true, listOfUsersToSuspend, log);
+                    //await zendeskClientService.SendEmail(listOfUsersToSuspend, log);
+                    _ = await zendeskClientService.SuspendUsers(true, listOfUsersToSuspend, log);
                 });
 
                 return new OkObjectResult("Task of processing PD Orders in Zendesk has been allocated to azure function and see logs for more information about its progress...");
