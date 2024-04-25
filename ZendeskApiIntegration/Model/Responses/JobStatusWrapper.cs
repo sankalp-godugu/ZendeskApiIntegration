@@ -15,7 +15,7 @@ namespace ZendeskApiIntegration.Model.Responses
         public List<JobResult>? Results { get; set; }
     }
 
-    public class UpdateManyTicketsResponse
+    public class JobStatusWrapper
     {
         public required JobStatus JobStatus { get; set; }
     }

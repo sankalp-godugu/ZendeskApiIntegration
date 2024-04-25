@@ -36,16 +36,17 @@ namespace ZendeskApiIntegration.TriggerUtilities
                     Filter filter = new()
                     {
                         LastLoginAt = DateTime.Now.AddMonths(-1).Date.ToString("yyyy-MM-dd"),
-                        OrgId = Organizations.Nations,
-                        Role = Roles.EndUser,
-                        Type = Types.User
+                        OrgId = Organization.Nations,
+                        Role = Role.EndUser,
+                        Type = Utilities.Type.User
                     };
-                    //List<User> listOfUsersToSuspend = await zendeskClientService.GetInactiveUsers(filter, log);
-                    List<User> listOfUsersToSuspend = GetTestUsers();
 
-                    //int sendEmailMultipleResult = await zendeskClientService.SendEmailMultiple(listOfUsersToSuspend, log);
+                    List<Model.User> listOfUsersToSuspend = await zendeskClientService.GetInactiveUsers(filter, log);
+                    //List<User> listOfUsersToSuspend = GetTestUsers();
+
+                    int sendEmailMultipleResult = await zendeskClientService.SendEmailMultiple(listOfUsersToSuspend, log);
                     //_ = await zendeskClientService.SuspendUsers(true, listOfUsersToSuspend, log);
-                    int sendEmailResult = await zendeskClientService.SendEmail(listOfUsersToSuspend, log);
+                    //int sendEmailResult = await zendeskClientService.SendEmail(listOfUsersToSuspend, log);
 
                     log?.LogInformation("********* Member PD Orders => Zendesk End User Suspension Automation Finished **********");
                 });
@@ -59,18 +60,7 @@ namespace ZendeskApiIntegration.TriggerUtilities
             }
         }
 
-        private static List<User> GetTestUsers()
-        {
-            return [
-                //new() { Id = 19613889634711, Email = Emails.EmailTestJudson, Name = Users.TestNameJudson, Suspended = false },
-                //new() { Id = 19539794011543, Email = Emails.EmailTestJudson2, Name = Users.TestNameJudson, Suspended = false },
-                //new() { Id = 19641229464983, Email = Emails.EmailTestAustinPersonal, Name = Users.TestNameAustin, Suspended = false },
-                new() { Id = 19641229464983, Email = Emails.EmailNationsAustinStephens, Name = Users.TestNameAustin, Suspended = false },
-                //new() { Id = 18139432493847, Email = Emails.MyEmail, Name = Users.MyName, Suspended = false }
-            ];
-        }
-
-        public static async Task<IActionResult> NotifyClientServices(IDataLayer dataLayer, IConfiguration config, IZendeskClientService zendeskClientService, List<User> endUsersToSuspend, ILogger log)
+        public static async Task<IActionResult> NotifyClientServices(IDataLayer dataLayer, IConfiguration config, IZendeskClientService zendeskClientService, List<Model.User> endUsersToSuspend, ILogger log)
         {
             try
             {
@@ -92,6 +82,40 @@ namespace ZendeskApiIntegration.TriggerUtilities
                 log?.LogError($"Failed with an exception with message: {ex.Message}");
                 return new BadRequestObjectResult(ex.Message);
             }
+        }
+
+        public static async Task<IActionResult> ProcessBulkGroupAssignment(IDataLayer dataLayer, IConfiguration config, IZendeskClientService zendeskClientService, ILogger log)
+        {
+            try
+            {
+                await Task.Run(async () =>
+                {
+                    log.LogInformation($"C# Timer trigger function executed at: {DateTime.Now}");
+                    log?.LogInformation("********* Member PD Orders => Zendesk Bulk Group Assignment **********");
+
+                    await zendeskClientService.CreateGroupMemberships(log);
+
+                    return;
+                });
+
+                return null;
+            }
+            catch (Exception ex)
+            {
+                log?.LogError($"Failed with an exception with message: {ex.Message}");
+                return new BadRequestObjectResult(ex.Message);
+            }
+        }
+
+        private static List<Model.User> GetTestUsers()
+        {
+            return [
+                //new() { Id = 19613889634711, Email = Emails.EmailTestJudson, Name = Users.TestNameJudson, OrganizationId = Organizations.Nations, Suspended = false },
+                //new() { Id = 19539794011543, Email = Emails.EmailTestJudson2, Name = Users.TestNameJudson, OrganizationId = Organizations.Nations, Suspended = false },
+                new Model.User() { Id = 19641229464983, Email = Email.EmailTestAustinPersonal, Name = Utilities.User.TestNameAustin, OrganizationId = Organization.Nations, Suspended = false },
+                //new() { Id = 17793394708887, Email = Emails.EmailNationsAustinStephens, Name = Users.TestNameAustin, OrganizationId = Organizations.Nations, Suspended = false },
+                //new() { Id = 18139432493847, Email = Emails.MyEmail, Name = Users.MyName, OrganizationId = Organizations.Nations, Suspended = false }
+            ];
         }
     }
 }

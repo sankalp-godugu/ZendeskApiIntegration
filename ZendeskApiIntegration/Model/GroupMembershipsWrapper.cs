@@ -2,7 +2,7 @@
 
 namespace ZendeskApiIntegration.Model
 {
-    public class GroupMembershipList
+    public class GroupMembershipsWrapper
     {
         [JsonProperty("group_memberships")]
         public List<GroupMembership> GroupMemberships = [];

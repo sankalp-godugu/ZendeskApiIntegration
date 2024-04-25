@@ -1,4 +1,4 @@
-﻿namespace ZendeskApiIntegration.Model
+﻿namespace ZendeskApiIntegration.Model.Responses
 {
     public class CountResponse
     {
