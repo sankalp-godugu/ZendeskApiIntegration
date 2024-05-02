@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 using ZendeskApiIntegration.App.Interfaces;
 using ZendeskApiIntegration.DataLayer.Interfaces;
 using ZendeskApiIntegration.Model;
-using ZendeskApiIntegration.Utilities;
+using static ZendeskApiIntegration.Utilities.Constants;
 
 namespace ZendeskApiIntegration.TriggerUtilities
 {
@@ -36,9 +36,9 @@ namespace ZendeskApiIntegration.TriggerUtilities
                     Filter filter = new()
                     {
                         LastLoginAt = DateTime.Now.AddMonths(-1).Date.ToString("yyyy-MM-dd"),
-                        OrgId = Organization.Nations,
-                        Role = Role.EndUser,
-                        Type = Utilities.Type.User
+                        OrgId = Organizations.Nations,
+                        Role = Roles.EndUser,
+                        Type = Types.User
                     };
 
                     List<Model.User> listOfUsersToSuspend = await zendeskClientService.GetInactiveUsers(filter, log);
@@ -84,7 +84,7 @@ namespace ZendeskApiIntegration.TriggerUtilities
             }
         }
 
-        public static async Task<IActionResult> ProcessBulkGroupAssignment(IDataLayer dataLayer, IConfiguration config, IZendeskClientService zendeskClientService, ILogger log)
+        public static async Task<IActionResult?> ProcessBulkGroupAssignment(IDataLayer dataLayer, IConfiguration config, IZendeskClientService zendeskClientService, ILogger log)
         {
             try
             {
@@ -107,14 +107,14 @@ namespace ZendeskApiIntegration.TriggerUtilities
             }
         }
 
-        private static List<Model.User> GetTestUsers()
+        private static List<User> GetTestUsers()
         {
             return [
-                //new() { Id = 19613889634711, Email = Emails.EmailTestJudson, Name = Users.TestNameJudson, OrganizationId = Organizations.Nations, Suspended = false },
+                new() { Id = 19613889634711, Email = Emails.EmailTestJudson, Name = Users.TestNameJudson, OrganizationId = Organizations.Nations, Suspended = false },
                 //new() { Id = 19539794011543, Email = Emails.EmailTestJudson2, Name = Users.TestNameJudson, OrganizationId = Organizations.Nations, Suspended = false },
-                new Model.User() { Id = 19641229464983, Email = Email.EmailTestAustinPersonal, Name = Utilities.User.TestNameAustin, OrganizationId = Organization.Nations, Suspended = false },
+                new User() { Id = 19641229464983, Email = Emails.EmailTestAustinPersonal, Name = Users.TestNameAustin, OrganizationId = Organizations.Nations, Suspended = false },
                 //new() { Id = 17793394708887, Email = Emails.EmailNationsAustinStephens, Name = Users.TestNameAustin, OrganizationId = Organizations.Nations, Suspended = false },
-                //new() { Id = 18139432493847, Email = Emails.MyEmail, Name = Users.MyName, OrganizationId = Organizations.Nations, Suspended = false }
+                new() { Id = 18139432493847, Email = Emails.MyEmail, Name = Users.MyName, OrganizationId = Organizations.Nations, Suspended = false }
             ];
         }
     }
