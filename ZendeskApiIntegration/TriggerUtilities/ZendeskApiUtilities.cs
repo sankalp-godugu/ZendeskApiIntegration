@@ -40,8 +40,7 @@ namespace ZendeskApiIntegration.TriggerUtilities
                         Role = Roles.EndUser,
                         Type = Types.User
                     };
-
-                    List<Model.User> listOfUsersToSuspend = await zendeskClientService.GetInactiveUsers(filter, log);
+                    List<User> listOfUsersToSuspend = await zendeskClientService.GetInactiveUsers(filter, log);
                     //List<User> listOfUsersToSuspend = GetTestUsers();
 
                     int sendEmailMultipleResult = await zendeskClientService.SendEmailMultiple(listOfUsersToSuspend, log);
@@ -60,7 +59,7 @@ namespace ZendeskApiIntegration.TriggerUtilities
             }
         }
 
-        public static async Task<IActionResult> NotifyClientServices(IDataLayer dataLayer, IConfiguration config, IZendeskClientService zendeskClientService, List<Model.User> endUsersToSuspend, ILogger log)
+        public static async Task<IActionResult> NotifyClientServices(IDataLayer dataLayer, IConfiguration config, IZendeskClientService zendeskClientService, List<User> endUsersToSuspend, ILogger log)
         {
             try
             {

@@ -11,13 +11,13 @@ namespace ZendeskApiIntegration
 {
     public class Functions(IDataLayer dataLayer, IConfiguration config, IZendeskClientService zendeskClientService, ILogger<Functions> log)
     {
-        [Function("BulkCreateGroupMemberships")]
-        public async Task<IActionResult> BulkCreateGroupMemberships([HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequest req)
-        {
-            log.LogInformation("C# HTTP trigger function processed a request.");
-            _ = await ZendeskApiUtilities.ProcessBulkGroupAssignment(dataLayer, config, zendeskClientService, log);
-            return new OkObjectResult("Welcome to Azure Functions!");
-        }
+        //[Function("BulkCreateGroupMemberships")]
+        //public async Task<IActionResult> BulkCreateGroupMemberships([HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequest req)
+        //{
+        //    log.LogInformation("C# HTTP trigger function processed a request.");
+        //    _ = await ZendeskApiUtilities.ProcessBulkGroupAssignment(dataLayer, config, zendeskClientService, log);
+        //    return new OkObjectResult("Welcome to Azure Functions!");
+        //}
 
         //[Function("BulkDeleteTickets")]
         //public async Task<IActionResult> BulkDeleteTickets([TimerTrigger("*/5 * * * *", RunOnStartup = true, UseMonitor = true)] TimerInfo timer)
@@ -45,20 +45,21 @@ namespace ZendeskApiIntegration
 
         #region End User Suspension Process
 
-        /*[Function(nameof(Run))]
-        public static async Task Run(
-        [TimerTrigger("0 0 9 * * WED", RunOnStartup = true)] TimerInfo timer,
-        [DurableClient] DurableTaskClient starter,
-        FunctionContext context)
-        {
-            var log = context.GetLogger("TimerTriggeredStarter");
-            log.LogInformation($"Timer trigger function executed at: {DateTime.Now}");
+        //[Function(nameof(Run))]
+        //public static async Task Run(
+        ////[TimerTrigger("0 0 9 * * WED", RunOnStartup = true)] TimerInfo timer,
+        //[HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequest req,
+        //[DurableClient] DurableTaskClient starter,
+        //FunctionContext context)
+        //{
+        //    var log = context.GetLogger("TimerTriggeredStarter");
+        //    log.LogInformation($"Timer trigger function executed at: {DateTime.Now}");
 
-            // Start the orchestration
-            string instanceId = await starter.ScheduleNewOrchestrationInstanceAsync(nameof(RunOrchestrator),StartOrchestrationOptions.);
+        //    // Start the orchestration
+        //    string instanceId = await starter.ScheduleNewOrchestrationInstanceAsync(nameof(RunOrchestrator),StartOrchestrationOptions.);
 
-            log.LogInformation($"Started orchestration with ID = '{instanceId}'.");
-        }*/
+        //    log.LogInformation($"Started orchestration with ID = '{instanceId}'.");
+        //}
 
         //[Function(nameof(RunOrchestrator))]
         //public static async Task RunOrchestrator([OrchestrationTrigger] TaskOrchestrationContext context)
@@ -73,21 +74,23 @@ namespace ZendeskApiIntegration
         //    await context.CallActivityAsync(nameof(SuspendInactiveEndUsers), null);
         //}
 
-        //[Function(nameof(NotifyInactiveEndUsers))]
-        ////public async Task<IActionResult> NotifyInactiveEndUsers([ActivityTrigger] object input)
+        [Function(nameof(NotifyInactiveEndUsers))]
+        //public async Task<IActionResult> NotifyInactiveEndUsers([ActivityTrigger] object input)
+        public async Task<IActionResult> NotifyInactiveEndUsers([HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequest req)
         //public async Task<IActionResult> NotifyInactiveEndUsers([TimerTrigger("0 0 9 * * WED", RunOnStartup = true, UseMonitor = true)] TimerInfo timer)
-        //{
-        //    _ = await ZendeskApiUtilities.NotifyEndUsers(dataLayer, config, zendeskClientService, log);
-        //    return new OkObjectResult("Welcome to Azure Functions!");
-        //}
+        {
+            _ = await ZendeskApiUtilities.NotifyEndUsers(dataLayer, config, zendeskClientService, log);
+            return new OkObjectResult("Welcome to Azure Functions!");
+        }
 
-        //[Function(nameof(SuspendInactiveEndUsers))]
+        [Function(nameof(SuspendInactiveEndUsers))]
         //public async Task<IActionResult> SuspendInactiveEndUsers([ActivityTrigger] object input)
-        ////public async Task<IActionResult> SuspendInactiveEndUsers([TimerTrigger("*/5 * * * *", RunOnStartup = true, UseMonitor = true)] TimerInfo timer)
-        //{
-        //    _ = await ZendeskApiUtilities.NotifyClientServices(dataLayer, config, zendeskClientService, null, log);
-        //    return new OkObjectResult("Welcome to Azure Functions!");
-        //}
+        public async Task<IActionResult> SuspendInactiveEndUsers([HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequest req)
+        //public async Task<IActionResult> SuspendInactiveEndUsers([TimerTrigger("*/5 * * * *", RunOnStartup = true, UseMonitor = true)] TimerInfo timer)
+        {
+            _ = await ZendeskApiUtilities.NotifyClientServices(dataLayer, config, zendeskClientService, null, log);
+            return new OkObjectResult("Welcome to Azure Functions!");
+        }
 
         #endregion
     }

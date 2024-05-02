@@ -1,4 +1,5 @@
 ﻿using ClosedXML.Excel;
+using DocumentFormat.OpenXml.Spreadsheet;
 using Microsoft.AspNetCore.Authentication.BearerToken;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -461,15 +462,18 @@ namespace ZendeskApiIntegration.App.Services
             using SmtpClient client = new(smtpServer, smtpPort)
             {
                 EnableSsl = true,
-                Credentials = new NetworkCredential(smtpUsername, smtpPassword)
+                Credentials = new NetworkCredential(smtpUsername, smtpPassword),
+                Timeout = Limits.Timeout
             };
 
             List<User> usersNotifiedSuccessfully = [];
             List<User> usersFailedToNotify = [];
             users = [.. users.OrderBy(u => u.Id)];
 
-            _ = await CreateWorkbook(Columns.Headers, usersNotifiedSuccessfully, FilePath.ListOfEndUsersNotified_Success, Sheets.EndUsersNotified_Success);
-            XLWorkbook workbook = await CreateWorkbook(Columns.Headers, usersFailedToNotify, FilePath.ListOfEndUsersNotified_Failed, Sheets.EndUsersNotified_Failed);
+            XLWorkbook workbook = await CreateWorkbook(Columns.Headers, [], FilePath.ListOfEndUsersNotified, [Sheets.Success, Sheets.Failed]);
+            workbook.TryGetWorksheet(Sheets.Success, out IXLWorksheet successSheet);
+            workbook.TryGetWorksheet(Sheets.Failed, out IXLWorksheet failedSheet);
+            ApplyFiltersAndSaveReport(workbook);
 
             foreach (User user in users)
             {
@@ -482,6 +486,7 @@ namespace ZendeskApiIntegration.App.Services
                 };
 
                 int numAttempts = 0;
+                TimeZoneInfo easternZone = TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time");
                 while (numAttempts < Limits.MaxAttempts)
                 {
                     try
@@ -491,8 +496,16 @@ namespace ZendeskApiIntegration.App.Services
                         using CancellationTokenSource timeoutTokenSource = new(TimeSpan.FromMilliseconds(Emails.Timeout));
                         CancellationToken timeoutToken = timeoutTokenSource.Token;
 
-                        Task sendEmailTask = client.SendMailAsync(message, timeoutToken);
+                        client.Send(message);
+                        usersNotifiedSuccessfully.Add(user);
+                        //throw new Exception();
+                        DateTime easternTime = TimeZoneInfo.ConvertTime(DateTime.Now, easternZone);
+                        AddUserToSheet(user, JobStatuses.Completed, easternTime, successSheet, workbook);
+                        break;
+
+                        /*Task sendEmailTask = client.SendMailAsync(message, timeoutToken);
                         Task timerTask = Task.Delay(TimeSpan.FromMilliseconds(Emails.Timeout));
+                        
                         Task completedTask = await Task.WhenAny(sendEmailTask, timerTask);
 
                         // Check if the email task completed successfully or was canceled due to timeout
@@ -501,7 +514,7 @@ namespace ZendeskApiIntegration.App.Services
                             // Email sent successfully, continue to the next iteration
                             log.LogInformation("Email sent successfully.");
                             usersNotifiedSuccessfully.Add(user);
-                            AddUserToSheet(user, workbook.Worksheet(Sheets.EndUsersNotified_Success));
+                            AddUserToSheet(user, sendEmailTask.Status, successSheet, workbook);
                             break;
                         }
                         else
@@ -510,20 +523,16 @@ namespace ZendeskApiIntegration.App.Services
                             await timeoutTokenSource.CancelAsync();
                             log.LogInformation($"Email sending canceled due to timeout.");
                             usersFailedToNotify.Add(user);
-                            AddUserToSheet(user, workbook.Worksheet(Sheets.EndUsersNotified_Failed));
-                        }
-                    }
-                    catch (OperationCanceledException ex)
-                    {
-                        log.LogInformation($"Email operation failed to cancel: {ex.Message}");
-                    }
-                    catch (SmtpException ex)
-                    {
-                        log.LogInformation($"SMTP Exception: {ex.Message}");
+                            AddUserToSheet(user, sendEmailTask.Status, failedSheet, workbook);
+                        }*/
                     }
                     catch (Exception ex)
                     {
                         log.LogInformation($"Failed to send email: {ex.Message}");
+                        
+                        DateTime easternTime = TimeZoneInfo.ConvertTime(DateTime.Now, easternZone);
+                        AddUserToSheet(user, ex.Message, easternTime, failedSheet, workbook);
+                        usersFailedToNotify.Add(user);
                     }
                     numAttempts++;
                 }
@@ -596,7 +605,7 @@ namespace ZendeskApiIntegration.App.Services
                 Thread.Sleep(Limits.SleepTime);
             }
 
-            _ = await CreateWorkbook(["Organization", "End User", "Email"], users, FilePath.ListOfEndUsersSuspended, Sheets.EndUsersSuspended_Failed);
+            _ = await CreateWorkbook(["Organization", "End User", "Email"], users, FilePath.ListOfEndUsersSuspended, ["Success", "Failed"]);
             return 0;
         }
         /// <summary>
@@ -751,47 +760,166 @@ Note: This email and any attachments may contain information that is confidentia
             bool sheetExists = workbook.TryGetWorksheet(name, out IXLWorksheet worksheet);
             return sheetExists ? worksheet : workbook.AddWorksheet(name, pos);
         }
-        private async Task<XLWorkbook> CreateWorkbook(string[] headers, List<User> users, string filePath, string sheetName)
+        private async Task<XLWorkbook> CreateWorkbook(string[] headers, List<User> users, string filePath, string[] sheets)
         {
             Dictionary<long, Task<HttpResponseMessage>> tasks = [];
             HttpClient client = httpClientFactory.CreateClient("ZD");
 
-            using XLWorkbook workbook = OpenWorkbook(filePath);
-            IXLWorksheet worksheet = OpenWorksheet(workbook, sheetName);
+            XLWorkbook workbook = OpenWorkbook(filePath);
 
-            // populate header row
-            for (int i = 0; i < headers.Length; i++)
+            foreach (var sheet in sheets)
             {
-                worksheet.Cell(1, i + 1).Value = headers[i];
-            }
+                IXLWorksheet worksheet = OpenWorksheet(workbook, sheet);
 
-            // load API calls to get user's organization
-            foreach (User user in users)
-            {
-                tasks.Add(user.Id, client.GetAsync($"organizations/{user.OrganizationId}"));
-            }
+                // populate header row
+                for (int i = 0; i < headers.Length; i++)
+                {
+                    worksheet.Cell(1, i + 1).Value = headers[i];
+                }
 
-            // populate data rows
-            for (int i = 0; i < users.Count; i++)
-            {
-                HttpResponseMessage response = await tasks[users[i].Id];
-                string result = await response.Content.ReadAsStringAsync();
-                ShowOrganizationResponse? org = JsonConvert.DeserializeObject<ShowOrganizationResponse>(result);
+                // load API calls to get user's organization
+                foreach (User user in users)
+                {
+                    tasks.Add(user.Id, client.GetAsync($"organizations/{user.OrganizationId}"));
+                }
 
-                worksheet.Cell(i + 2, 1).Value = org?.Organization?.Name;
-                worksheet.Cell(i + 2, 2).Value = users[i].Name;
-                worksheet.Cell(i + 2, 3).Value = users[i].Email;
+                // populate data rows
+                for (int i = 0; i < users.Count; i++)
+                {
+                    HttpResponseMessage response = await tasks[users[i].Id];
+                    string result = await response.Content.ReadAsStringAsync();
+                    ShowOrganizationResponse? org = JsonConvert.DeserializeObject<ShowOrganizationResponse>(result);
+
+                    worksheet.Cell(i + 2, 1).Value = org?.Organization?.Name;
+                    worksheet.Cell(i + 2, 2).Value = users[i].Name;
+                    worksheet.Cell(i + 2, 3).Value = users[i].Email;
+                }
             }
 
             workbook.SaveAs(filePath);
             return workbook;
         }
-        public static void AddUserToSheet(User user, IXLWorksheet worksheet)
+        public static void AddHeaders(string[] headers, IXLWorksheet worksheet)
         {
-            int row = worksheet.LastRowUsed().RowNumber() + 1;
-            worksheet.Cell(row, 1).Value = user.OrganizationId;
+            // populate header row
+            for (int i = 0; i < headers.Length; i++)
+            {
+                worksheet.Cell(1, i + 1).Value = headers[i];
+            }
+        }
+        public static void AddUserToSheet(User user, string status, DateTime time, IXLWorksheet worksheet, XLWorkbook workbook)
+        {
+            if (worksheet.FirstRow().IsEmpty()) AddHeaders(Columns.Headers, worksheet);
+
+            int row = worksheet.LastRowUsed() is null ? 2 : worksheet.LastRowUsed().RowNumber() + 1;
+            worksheet.Cell(row, 1).Value = user.OrganizationId.ToString();
             worksheet.Cell(row, 2).Value = user.Name;
             worksheet.Cell(row, 3).Value = user.Email;
+            worksheet.Cell(row, 4).Value = status.ToString();
+            worksheet.Cell(row, 5).Value = time.ToString();
+            workbook.Save();
+        }
+        private static void ApplyFiltersAndSaveReport(XLWorkbook workbook)
+        {
+            // Check if the worksheet exists
+            //DeleteWorkbook(filePath);
+
+            foreach (var worksheet in workbook.Worksheets)
+            {
+
+                // Add a new worksheet with the same name
+                ClearWorksheet(worksheet);
+
+                // Format header row
+                FormatHeaderRow(worksheet.Row(1));
+
+                // Freeze header row
+                worksheet.SheetView.FreezeRows(1);
+
+                // Set number formats for specific columns
+                SetNumberFormats(worksheet);
+
+                // Set column widths
+                SetColumnWidths(worksheet);
+
+                // Apply filters to specific columns
+                //ApplyFilters(worksheet, 14, "Reimbursement");
+                //ApplyFilters(worksheet, 5, "2024");
+            }
+
+            SaveWorkbook(FilePath.ListOfEndUsersNotified, workbook);
+        }
+        private static void ClearWorksheet(IXLWorksheet worksheet)
+        {
+            // Get the worksheet or add a new one if it doesn't exist
+            if (worksheet == null)
+            {
+                return;
+            }
+            else
+            {
+                // Clear existing data if the worksheet already exists
+                worksheet.AutoFilter.Clear();
+                _ = worksheet.Clear();
+            }
+        }
+        private static void SaveWorkbook(string filePath, XLWorkbook workbook)
+        {
+            // Save the workbook
+            if (!string.IsNullOrEmpty(filePath))
+            {
+                // If the workbook has a file path, it means it has been previously saved
+                workbook.SaveAs(filePath); // Use Save() to save the workbook using its existing file name or location
+            }
+            else
+            {
+                // If the workbook has not been previously saved, use SaveAs()
+                workbook.SaveAs(filePath); // Provide the desired file path
+            }
+        }
+        private static void FormatHeaderRow(IXLRow headerRow)
+        {
+            headerRow.Style.Fill.BackgroundColor = XLColor.Orange;
+            headerRow.Style.Font.Bold = true;
+        }
+        private static void SetNumberFormats(IXLWorksheet worksheet)
+        {
+            foreach (IXLColumn column in worksheet.Columns())
+            {
+                XLDataType dataType = GetColumnType(column);
+                string format = GetFormatForDataType(dataType);
+                column.Style.NumberFormat.Format = format;
+            }
+        }
+        private static XLDataType GetColumnType(IXLColumn column)
+        {
+            // Check the data type of the cells in the column
+            bool isNumeric = column.Cells().All(cell => cell.DataType == XLDataType.Number);
+            bool isDate = column.Cells().All(cell => cell.DataType == XLDataType.DateTime);
+
+            return isNumeric ? XLDataType.Number : isDate ? XLDataType.DateTime : XLDataType.Text;
+        }
+        private static string GetFormatForDataType(XLDataType dataType)
+        {
+            return dataType switch
+            {
+                XLDataType.Number => "$#,##0.00",
+                XLDataType.DateTime => "MM/dd/yyyy",
+                XLDataType.Text => "@",// General text format
+                _ => "",
+            };
+        }
+        private static void SetColumnWidths(IXLWorksheet worksheet, int width = 20)
+        {
+            foreach (IXLColumn column in worksheet.ColumnsUsed())
+            {
+                column.Width = width;
+            }
+        }
+        private static void ApplyFilters(IXLWorksheet worksheet, int columnIndex, string filterCriteria)
+        {
+
+            _ = worksheet.SetAutoFilter().Column(columnIndex).AddFilter(filterCriteria);
         }
         private static List<User>? ConvertWorkbookToList(string filePath, string sheetName = Columns.EndUsers)
         {

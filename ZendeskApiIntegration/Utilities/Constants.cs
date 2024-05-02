@@ -2,8 +2,6 @@
 {
     public static class Constants
     {
-
-
         public const string CohortFilePath = @"C:\Users\Sankalp.Godugu\Downloads\Copy of April Surge - names locations e-mail UKG load date.xlsx";
         public static readonly Dictionary<long, string> Groups = new()
         {
@@ -25,9 +23,7 @@
 
         public static class FilePath
         {
-            public static readonly string ListOfEndUsersNotified_Success = @$"C:\Users\Sankalp.Godugu\OneDrive - NationsBenefits\Documents\Business\Zendesk Integration\EndUserSuspension\{DateTime.Now.Date:M-dd}\ListOfEndUsersNotified_Success_{DateTime.Now.Date:M-dd}.xlsx";
-
-            public static readonly string ListOfEndUsersNotified_Failed = @$"C:\Users\Sankalp.Godugu\OneDrive - NationsBenefits\Documents\Business\Zendesk Integration\EndUserSuspension\{DateTime.Now.Date:M-dd}\ListOfEndUsersNotified_Failed_{DateTime.Now.Date:M-dd}.xlsx";
+            public static readonly string ListOfEndUsersNotified = @$"C:\Users\Sankalp.Godugu\OneDrive - NationsBenefits\Documents\Business\Zendesk Integration\EndUserSuspension\{DateTime.Now.Date:M-dd}\ListOfEndUsersNotified_{DateTime.Now.Date:M-dd}.xlsx";
 
             public static readonly string ListOfEndUsersSuspended = @$"C:\Users\Sankalp.Godugu\OneDrive - NationsBenefits\Documents\Business\Zendesk Integration\EndUserSuspension\{DateTime.Now.Date:M-dd}\ListOfEndUsersSuspended_{DateTime.Now.Date:M-dd}.xlsx";
 
@@ -39,12 +35,13 @@
             public const int PageSize = 1000;
             public const int BulkCreateMembershipsBatchSize = 100;
             public const int MaxAttempts = 1;
-            public const int SleepTime = 1000;
+            public const int SleepTime = 2400;
+            public const int Timeout = 30000;
         }
         public class Sheets
         {
-            public const string EndUsersNotified_Failed = "End Users Notified - FAILED";
-            public const string EndUsersNotified_Success = "End Users Notified - SUCCESS";
+            public const string Failed = "FAILED";
+            public const string Success = "SUCCESS";
             public const string EndUsersSuspended_Failed = "End Users Suspended - FAILED";
             public const string EndUsersSuspended_Success = "End Users Suspended - SUCCESS";
         }
@@ -56,7 +53,7 @@
             public const string Status = "Status";
             public const string EndUsers = "End Users";
             public const string Cohort = "Cohort";
-            public static readonly string[] Headers = ["Organization", "End User", "Email"];
+            public static readonly string[] Headers = ["Organization", "End User", "Email", "Notification Status", "Timestamp"];
         }
         public static readonly Dictionary<string, string> TestUsers = new()
         {
