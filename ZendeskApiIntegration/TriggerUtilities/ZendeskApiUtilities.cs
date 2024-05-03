@@ -41,7 +41,7 @@ namespace ZendeskApiIntegration.TriggerUtilities
                         Type = Types.User
                     };
                     List<User> listOfUsersToSuspend = await zendeskClientService.GetInactiveUsers(filter, log);
-                    //List<User> listOfUsersToSuspend = GetTestUsers();
+                    //List<User> listOfUsersToSuspend = GetUsersFailedToSendEmail();
 
                     int sendEmailMultipleResult = await zendeskClientService.SendEmailMultiple(listOfUsersToSuspend, log);
                     //_ = await zendeskClientService.SuspendUsers(true, listOfUsersToSuspend, log);
@@ -114,6 +114,16 @@ namespace ZendeskApiIntegration.TriggerUtilities
                 new User() { Id = 19641229464983, Email = Emails.EmailTestAustinPersonal, Name = Users.TestNameAustin, OrganizationId = Organizations.Nations, Suspended = false },
                 //new() { Id = 17793394708887, Email = Emails.EmailNationsAustinStephens, Name = Users.TestNameAustin, OrganizationId = Organizations.Nations, Suspended = false },
                 new() { Id = 18139432493847, Email = Emails.MyEmail, Name = Users.MyName, OrganizationId = Organizations.Nations, Suspended = false }
+            ];
+        }
+
+        private static List<User> GetUsersFailedToSendEmail()
+        {
+            return [
+                new() { Id = 19868705669527, Email = "cspencer@txihp.com", Name = "Caroline Spencer", OrganizationId = 19868705669527, Suspended = false },
+                new() { Id = 19944633851415, Email = "kris.karl@cdphp.com", Name = "Kris Karl", OrganizationId = 19944633851415, Suspended = false },
+                new() { Id = 20153110099095, Email = "kelly.staudt@communityhealthchoice.org", Name = "Kelly Staudt", OrganizationId = 20153110099095, Suspended = false },
+                new() { Id = 19501638260631, Email = "mcecchi@brighthealthcare.com", Name = "Martte Cecchi", OrganizationId = 20153110099095, Suspended = false }
             ];
         }
     }
