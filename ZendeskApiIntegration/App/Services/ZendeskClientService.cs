@@ -1,5 +1,4 @@
 ﻿using ClosedXML.Excel;
-using DocumentFormat.OpenXml.Spreadsheet;
 using Microsoft.AspNetCore.Authentication.BearerToken;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -199,7 +198,7 @@ namespace ZendeskApiIntegration.App.Services
             List<User> usersFromZendesk = await GetUsers(query, log);
             if (usersFromZendesk?.Count > 0)
             {
-                foreach (long groupId in Constants.Groups.Select(g => g.Key))
+                foreach (long groupId in Groups.Select(g => g.Key))
                 {
                     GroupMembershipsWrapper groupMembershipsWrapper = ConstructBulkGroupMembershipAssignmentJSON(usersFromZendesk, groupId);
                     if (groupMembershipsWrapper.GroupMemberships.Count > 0)
@@ -758,7 +757,8 @@ Note: This email and any attachments may contain information that is confidentia
         private static IXLWorksheet OpenWorksheet(XLWorkbook workbook, string? name = null, int pos = 1)
         {
             bool sheetExists = workbook.TryGetWorksheet(name, out IXLWorksheet worksheet);
-            return sheetExists ? worksheet : workbook.AddWorksheet(name, pos);
+
+            return sheetExists ? worksheet : workbook.Worksheet(pos) ?? workbook.AddWorksheet(name, pos);
         }
         private async Task<XLWorkbook> CreateWorkbook(string[] headers, List<User> users, string filePath, string[] sheets)
         {
