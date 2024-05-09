@@ -7,12 +7,7 @@
         "smtpServer": "smtp.office365.com",
         "smtpPort": "587",
         "smtpUsername": "donotreply_zendesk@nationsbenefits.com",
-        "smtpPassword": "_iDa4I/9G7%5\"o.7",
-        "fromAddress": "donotreply_zendesk@nationsbenefits.com",
-        "subjectEndUsers": "Action Needed: Login to Your NationsBenefits Zendesk Account Within 7 Days",
-        "subjectClientServices": "Zendesk End User Suspension List",
-        "toAddress": "cs@nationsbenefits.com",
-        "ccEmail": "businessengineering@nationsbenefits.com"
+        "smtpPassword": "_iDa4I/9G7%5\"o.7"
       }
     },
     "Docker": {

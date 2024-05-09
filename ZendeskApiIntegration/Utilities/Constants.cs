@@ -20,14 +20,31 @@
             { 18731644124439, "Supervisor Callbacks" },
             { 18737030342295, "Transportation" }
         };
-
         public static class FilePath
         {
-            public static readonly string ListOfEndUsersNotified = @$"C:\Users\Sankalp.Godugu\OneDrive - NationsBenefits\Documents\Business\Zendesk Integration\EndUserSuspension\{DateTime.Now.Date:M-dd}\ListOfEndUsersNotified_{DateTime.Now.Date:M-dd}.xlsx";
+            public static readonly string ListOfEndUsersNotified = @$"C:\Users\Sankalp.Godugu\OneDrive - NationsBenefits\Documents\Business\Zendesk Integration\EndUserSuspension\{GetCurrentDateInEst()}\ListOfEndUsersNotified_{GetCurrentDateInEst()}.xlsx";
 
-            public static readonly string ListOfEndUsersSuspended = @$"C:\Users\Sankalp.Godugu\OneDrive - NationsBenefits\Documents\Business\Zendesk Integration\EndUserSuspension\{DateTime.Now.Date:M-dd}\ListOfEndUsersSuspended_{DateTime.Now.Date:M-dd}.xlsx";
+            public static readonly string ListOfEndUsersSuspended = @$"C:\Users\Sankalp.Godugu\OneDrive - NationsBenefits\Documents\Business\Zendesk Integration\EndUserSuspension\{GetCurrentDateInEst()}\ListOfEndUsersSuspended_{GetCurrentDateInEst()}.xlsx";
 
-            public static readonly string ListOfEndUsersNotifiedLastWeek = @$"C:\Users\Sankalp.Godugu\OneDrive - NationsBenefits\Documents\Business\Zendesk Integration\EndUserSuspension\{DateTime.Now.AddDays(-7).Date:M-dd}\ListOfEndUsersNotified_{DateTime.Now.AddDays(-7).Date:M-dd}.xlsx";
+            public static readonly string ListOfEndUsersNotifiedLastWeek = @$"C:\Users\Sankalp.Godugu\OneDrive - NationsBenefits\Documents\Business\Zendesk Integration\EndUserSuspension\{GetDate7DaysAgoInEst()}\ListOfEndUsersNotified_{GetDate7DaysAgoInEst()}.xlsx";
+
+            public static readonly string ListOfEndUsersSuspendedLastWeek = @$"C:\Users\Sankalp.Godugu\OneDrive - NationsBenefits\Documents\Business\Zendesk Integration\EndUserSuspension\{GetDate7DaysAgoInEst()}\ListOfEndUsersSuspended_{GetDate7DaysAgoInEst()}.xlsx";
+        }
+
+        public static string GetCurrentDateInEst()
+        {
+            return $"{TimeZoneInfo.ConvertTime(DateTime.Now, TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time")).Date:M-dd}";
+        }
+
+        public static string GetDate7DaysAgoInEst()
+        {
+            return $"{TimeZoneInfo.ConvertTime(DateTime.Now.AddDays(-7), TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time")).Date:M-dd}";
+        }
+
+        public static DateTime GetCurrentTimeInEst()
+        {
+            TimeZoneInfo easternZone = TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time");
+            return TimeZoneInfo.ConvertTime(DateTime.Now, easternZone);
         }
 
         public static class Limits
@@ -44,6 +61,7 @@
             public const string Success = "SUCCESS";
             public const string EndUsersSuspended_Failed = "End Users Suspended - FAILED";
             public const string EndUsersSuspended_Success = "End Users Suspended - SUCCESS";
+            public const string EndUsers = "End Users";
         }
         public static class Columns
         {
@@ -53,7 +71,7 @@
             public const string Status = "Status";
             public const string EndUsers = "End Users";
             public const string Cohort = "Cohort";
-            public static readonly string[] Headers = ["Organization", "End User", "Email", "Notification Status", "Timestamp"];
+            public static readonly string[] Headers = ["Organization", "End User", "Email", "Status", "Timestamp"];
         }
         public static readonly Dictionary<string, string> TestUsers = new()
         {
@@ -62,7 +80,6 @@
             { "Judson Noel", "jnoel@nationsbenefits.com" },
         };
         public const string MemberSupportEmail = "https://membersupport.nationsbenefits.com/";
-
         public static class Emails
         {
             public const string EmailTestAustinPersonal = "ahstephens01@gmail.com";
@@ -74,22 +91,24 @@
             public const string EmailNationsDavidDandridge = "ddandridge@nationsbenefits.com";
 
             public const int Timeout = 30000;
+            public const string SubjectEndUsers = "Action Needed: Login to Your NationsBenefits Zendesk Account Within 7 Days";
+            public const string SubjectClientServices = "Zendesk End User Suspension List";
+            public const string FromAddress = @"donotreply_zendesk@nationsbenefits.com";
+            public const string ToAddress = @"cs@nationsbenefits.com";
+            public const string ToAddressCC = @"businessengineering@nationsbenefits.com";
         }
-
         public static class Users
         {
             public const string MyName = "Sankalp Godugu";
             public const string TestNameAustin = "Austin Stephens";
             public const string TestNameJudson = "Judson Noel";
         }
-
         public static class Types
         {
             public const string Ticket = "ticket";
             public const string User = "user";
             public const string Organization = "organization";
         }
-
         public static class Roles
         {
             // roles
@@ -97,18 +116,20 @@
             public const string Agent = "agent";
             public const string Admin = "admin";
         }
-
         public static class Organizations
         {
             // orgs
             public const long Nations = 16807567180439;
         }
-
         public static class RecordStatuses
         {
             public const string Updated = "Updated";
         }
-
+        public static class UserStatuses
+        {
+            public const string Suspended = "Suspended";
+            public const string Active = "Active";
+        }
         public static class JobStatuses
         {
             public const string Completed = "completed";
