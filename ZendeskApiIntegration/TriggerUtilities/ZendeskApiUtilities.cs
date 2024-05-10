@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using ZendeskApiIntegration.App.Interfaces;
 using ZendeskApiIntegration.DataLayer.Interfaces;
 using ZendeskApiIntegration.Model;
+using ZendeskApiIntegration.Model.Responses;
 using static ZendeskApiIntegration.App.Services.ZendeskClientService;
 using static ZendeskApiIntegration.Utilities.Constants;
 
@@ -44,10 +45,10 @@ namespace ZendeskApiIntegration.TriggerUtilities
                     List<User> inactiveEndUsers = await zendeskClientService.GetInactiveUsers(filter, log);
                     List<User> endUsersNotifiedLastWeek = zendeskClientService.GetEndUsersFromLastReport(inactiveEndUsers, log);
                     List<User> inactiveEndUsersToSuspend = inactiveEndUsers.Intersect(endUsersNotifiedLastWeek, new UserEmailEqualityComparer()).ToList();
-                    //inactiveEndUsersToSuspend = GetTestUsers();
+                    inactiveEndUsersToSuspend = GetTestUsers();
 
                     await zendeskClientService.GetUserOrganizations(inactiveEndUsersToSuspend, log);
-                    //ShowJobStatusResponse suspendUsersResponse = await zendeskClientService.SuspendUsers(true, inactiveEndUsersToSuspend, log);
+                    ShowJobStatusResponse suspendUsersResponse = await zendeskClientService.SuspendUsers(true, inactiveEndUsersToSuspend, log);
                     int notifyClientServicesResponse = await zendeskClientService.NotifyClientServices(inactiveEndUsersToSuspend, log);
 
                     List<User> endUsersToNotify = inactiveEndUsers.Except(inactiveEndUsersToSuspend).ToList();

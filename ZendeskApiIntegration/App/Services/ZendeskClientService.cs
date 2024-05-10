@@ -199,7 +199,7 @@ namespace ZendeskApiIntegration.App.Services
             List<User> usersFromZendesk = await GetUsers(query, log);
             if (usersFromZendesk?.Count > 0)
             {
-                foreach (long groupId in Constants.Groups.Select(g => g.Key))
+                foreach (long groupId in Groups.Select(g => g.Key))
                 {
                     GroupMembershipsWrapper groupMembershipsWrapper = ConstructBulkGroupMembershipAssignmentJSON(usersFromZendesk, groupId);
                     if (groupMembershipsWrapper.GroupMemberships.Count > 0)
@@ -215,7 +215,7 @@ namespace ZendeskApiIntegration.App.Services
                             {
                                 GroupMemberships = groupMembershipsWrapper.GroupMemberships.Skip(batchSize * i).Take(batchSize).ToList()
                             };
-                            ShowJobStatusResponse jobStatusResponse = await BulkCreateMemberships(subset, log);
+                            ShowJobStatusResponse jobStatusResponse = await BulkCreateGroupMemberships(subset, log);
 
                             remainingGroupMemberships = totalGroupMemberships - (batchSize * (i + 1));
                             hasMoreToProcess = remainingGroupMemberships > 0;
@@ -297,7 +297,7 @@ namespace ZendeskApiIntegration.App.Services
             List<string> columns = worksheet.Row(1).CellsUsed().Select(c => c.Value.ToString()).ToList();
 
             // Find the index of the "Email" column
-            string? emailCol = columns.FirstOrDefault(h => h.Contains("email", StringComparison.OrdinalIgnoreCase)) ?? throw new Exception("Email column not found in the Excel file.");
+            string? emailCol = columns.FirstOrDefault(h => h.Contains("email", StringComparison.OrdinalIgnoreCase) || h.Contains("e-mail", StringComparison.OrdinalIgnoreCase)) ?? throw new Exception("Email column not found in the Excel file.");
             int emailColumnIndex = columns.IndexOf(emailCol);
 
             // Read data starting from the row after the header
@@ -336,7 +336,7 @@ namespace ZendeskApiIntegration.App.Services
             }
             return groupMembershipList;
         }
-        private async Task<ShowJobStatusResponse> BulkCreateMemberships(GroupMembershipsWrapper groupMembershipsWrapper, ILogger log)
+        private async Task<ShowJobStatusResponse> BulkCreateGroupMemberships(GroupMembershipsWrapper groupMembershipsWrapper, ILogger log)
         {
             HttpClient client = httpClientFactory.CreateClient("ZD");
             client.DefaultRequestHeaders.Accept.Clear();
@@ -364,9 +364,7 @@ namespace ZendeskApiIntegration.App.Services
                         result = await response.Content.ReadAsStringAsync();
                         showJobStatusResponse = JsonConvert.DeserializeObject<ShowJobStatusResponse>(result);
                     }
-                } while (showJobStatusResponse?.JobStatus.Status is JobStatuses.Queued
-                        or JobStatuses.Working
-                        );
+                } while (showJobStatusResponse?.JobStatus.Status is JobStatuses.Queued or JobStatuses.Working);
             }
             return showJobStatusResponse;
         }
@@ -480,15 +478,16 @@ namespace ZendeskApiIntegration.App.Services
                 int numAttempts = 0;
                 for (int i = 0; i < i + users.Count; i += Limits.BatchSize)
                 {
-
                     int startIndex = i;
                     int endIndex = Math.Min(i + Limits.BatchSize, users.Count);
                     List<User> batchOfUsers = users.GetRange(startIndex, endIndex - startIndex);
                     string userIds = string.Join(',', batchOfUsers.Select(u => u.Id));
                     numAttempts = 0;
-                    while (numAttempts < Limits.MaxAttempts)
+                    HttpResponseMessage response = new();
+                    do
                     {
-                        HttpResponseMessage response = await client.PutAsync($"users/update_many?ids={userIds}", sc);
+                        await client.PutAsync($"users/update_many?ids={userIds}", sc);
+                        //response.StatusCode = HttpStatusCode.InternalServerError;
                         if (response.IsSuccessStatusCode)
                         {
                             log.LogInformation($"Queued job to suspend end users...");
@@ -502,11 +501,10 @@ namespace ZendeskApiIntegration.App.Services
                                     result = await response.Content.ReadAsStringAsync();
                                     showJobStatusResponse = JsonConvert.DeserializeObject<ShowJobStatusResponse>(result);
                                 }
-                            } while (showJobStatusResponse.JobStatus.Status == JobStatuses.Queued
-                                        || showJobStatusResponse.JobStatus.Status is JobStatuses.Working);
+                            } while (showJobStatusResponse?.JobStatus.Status is JobStatuses.Queued or JobStatuses.Working);
                         }
-                        numAttempts++;
-                    }
+                        else numAttempts++;
+                    } while (numAttempts < Limits.MaxAttempts && !response.IsSuccessStatusCode);
                 }
 
                 await BuildReport(showJobStatusResponse, users, log);
@@ -544,7 +542,7 @@ namespace ZendeskApiIntegration.App.Services
         /// <param name="users">list of inactive non-Nations end users that are part of an organization</param>
         /// <param name="log"></param>
         /// <returns>0 if success, -1 if fail</returns>
-        public int NotifyClientServices(List<User> users, ILogger log)
+        public static int NotifyClientServices(List<User> users, ILogger log)
         {
             string smtpServer = Environment.GetEnvironmentVariable("smtpServer");
             int smtpPort = int.Parse(Environment.GetEnvironmentVariable("smtpPort"));
@@ -736,8 +734,7 @@ Note: This email and any attachments may contain information that is confidentia
             }
 
             int numberAttempts = 0;
-            int maxAttempts = Limits.MaxAttempts;
-            while (numberAttempts <= maxAttempts)
+            while (numberAttempts < Limits.MaxAttempts)
             {
                 try
                 {

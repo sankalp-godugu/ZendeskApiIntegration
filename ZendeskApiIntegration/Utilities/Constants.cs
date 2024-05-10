@@ -56,7 +56,7 @@
         {
             public const int PageSize = 1000;
             public const int BatchSize = 100;
-            public const int MaxAttempts = 1;
+            public const int MaxAttempts = 3;
             public const int SleepTime = 2400;
             public const int Timeout = 30000;
         }
