@@ -447,9 +447,8 @@ namespace ZendeskApiIntegration.App.Services
         public async Task GetUserOrganizations(List<User> users, ILogger logger)
         {
             HttpClient client = httpClientFactory.CreateClient("ZD");
-            List<Task<HttpResponseMessage>> tasks = new();
-            
-            foreach(var user in users)
+
+            foreach (User user in users)
             {
                 HttpResponseMessage response = await client.GetAsync($"organizations/{user.OrganizationId}");
                 string result = await response.Content.ReadAsStringAsync();
@@ -474,12 +473,13 @@ namespace ZendeskApiIntegration.App.Services
 
                 string json = JsonConvert.SerializeObject(user);
                 StringContent sc = new(json, Encoding.UTF8, "application/json");
-                
+
                 HttpClient client = httpClientFactory.CreateClient("ZD");
 
                 log.LogInformation($"Suspending end users...");
                 int numAttempts = 0;
-                for (int i = 0; i < i + users.Count; i += Limits.BatchSize) {
+                for (int i = 0; i < i + users.Count; i += Limits.BatchSize)
+                {
 
                     int startIndex = i;
                     int endIndex = Math.Min(i + Limits.BatchSize, users.Count);
@@ -544,7 +544,7 @@ namespace ZendeskApiIntegration.App.Services
         /// <param name="users">list of inactive non-Nations end users that are part of an organization</param>
         /// <param name="log"></param>
         /// <returns>0 if success, -1 if fail</returns>
-        public async Task<int> NotifyClientServices(List<User> users, ILogger log)
+        public int NotifyClientServices(List<User> users, ILogger log)
         {
             string smtpServer = Environment.GetEnvironmentVariable("smtpServer");
             int smtpPort = int.Parse(Environment.GetEnvironmentVariable("smtpPort"));
@@ -944,6 +944,11 @@ Note: This email and any attachments may contain information that is confidentia
             }
 
             return userList;
+        }
+
+        Task<int> IZendeskClientService.NotifyClientServices(List<User> users, ILogger log)
+        {
+            throw new NotImplementedException();
         }
 
         // Define a custom equality comparer based on the UserId property

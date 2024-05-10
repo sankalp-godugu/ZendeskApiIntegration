@@ -54,7 +54,7 @@ namespace ZendeskApiIntegration.TriggerUtilities
                     bool hasUsersToNotify = endUsersToNotify.Count > 0;
                     endUsersToNotify = hasUsersToNotify ? endUsersToNotify : [];
                     await zendeskClientService.GetUserOrganizations(endUsersToNotify, log);
-                    
+
                     int sendEmailMultipleResult = await zendeskClientService.NotifyEndUsers(endUsersToNotify, log);
 
                     log?.LogInformation("********* Member PD Orders => Zendesk End User Suspension Automation Finished **********");
