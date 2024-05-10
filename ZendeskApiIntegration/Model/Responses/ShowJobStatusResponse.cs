@@ -5,7 +5,7 @@ namespace ZendeskApiIntegration.Model.Responses
 {
     public class ShowJobStatusResponse
     {
-        public required JobStatus JobStatus { get; set; }
+        public JobStatus JobStatus { get; set; }
     }
 
     public class JobStatus

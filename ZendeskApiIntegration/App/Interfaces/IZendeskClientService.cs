@@ -9,6 +9,7 @@ namespace ZendeskApiIntegration.App.Interfaces
     /// </summary>
     public interface IZendeskClientService
     {
+        public Task GetUserOrganizations(List<User> users, ILogger logger);
         /// <summary>
         /// Initiate contact list export in Zendesk asychronously.
         /// </summary>

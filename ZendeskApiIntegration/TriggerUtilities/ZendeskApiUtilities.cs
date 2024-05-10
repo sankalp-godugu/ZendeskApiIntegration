@@ -4,7 +4,6 @@ using Microsoft.Extensions.Logging;
 using ZendeskApiIntegration.App.Interfaces;
 using ZendeskApiIntegration.DataLayer.Interfaces;
 using ZendeskApiIntegration.Model;
-using ZendeskApiIntegration.Model.Responses;
 using static ZendeskApiIntegration.App.Services.ZendeskClientService;
 using static ZendeskApiIntegration.Utilities.Constants;
 
@@ -45,15 +44,18 @@ namespace ZendeskApiIntegration.TriggerUtilities
                     List<User> inactiveEndUsers = await zendeskClientService.GetInactiveUsers(filter, log);
                     List<User> endUsersNotifiedLastWeek = zendeskClientService.GetEndUsersFromLastReport(inactiveEndUsers, log);
                     List<User> inactiveEndUsersToSuspend = inactiveEndUsers.Intersect(endUsersNotifiedLastWeek, new UserEmailEqualityComparer()).ToList();
+                    //inactiveEndUsersToSuspend = GetTestUsers();
 
-                    List<User> usersToNotify = inactiveEndUsers.Except(inactiveEndUsersToSuspend).ToList();
-                    bool hasUsersToNotify = usersToNotify.Count > 0;
-                    List<User> listOfUsersToNotify = hasUsersToNotify ? usersToNotify : [];
-                    inactiveEndUsersToSuspend = GetTestUsers();
-
-                    ShowJobStatusResponse suspendUsersResponse = await zendeskClientService.SuspendUsers(true, inactiveEndUsersToSuspend, log);
+                    await zendeskClientService.GetUserOrganizations(inactiveEndUsersToSuspend, log);
+                    //ShowJobStatusResponse suspendUsersResponse = await zendeskClientService.SuspendUsers(true, inactiveEndUsersToSuspend, log);
                     int notifyClientServicesResponse = await zendeskClientService.NotifyClientServices(inactiveEndUsersToSuspend, log);
-                    int sendEmailMultipleResult = await zendeskClientService.NotifyEndUsers(inactiveEndUsersToSuspend, log);
+
+                    List<User> endUsersToNotify = inactiveEndUsers.Except(inactiveEndUsersToSuspend).ToList();
+                    bool hasUsersToNotify = endUsersToNotify.Count > 0;
+                    endUsersToNotify = hasUsersToNotify ? endUsersToNotify : [];
+                    await zendeskClientService.GetUserOrganizations(endUsersToNotify, log);
+                    
+                    int sendEmailMultipleResult = await zendeskClientService.NotifyEndUsers(endUsersToNotify, log);
 
                     log?.LogInformation("********* Member PD Orders => Zendesk End User Suspension Automation Finished **********");
                 });
@@ -94,8 +96,8 @@ namespace ZendeskApiIntegration.TriggerUtilities
         {
             return [
                 new() { Id = 18139432493847, Email = Emails.MyEmail, Name = Users.MyName, OrganizationId = Organizations.Nations, Suspended = false },
-                //new User() { Id = 19641229464983, Email = Emails.EmailTestAustinPersonal, Name = Users.TestNameAustin, OrganizationId = Organizations.Nations, Suspended = false },
-                //new() { Id = 19613889634711, Email = Emails.EmailTestJudson, Name = Users.TestNameJudson, OrganizationId = Organizations.Nations, Suspended = false }
+                new User() { Id = 19641229464983, Email = Emails.EmailTestAustinPersonal, Name = Users.TestNameAustin, OrganizationId = Organizations.Nations, Suspended = false },
+                new() { Id = 19613889634711, Email = Emails.EmailTestJudson, Name = Users.TestNameJudson, OrganizationId = Organizations.Nations, Suspended = false }
                 //new() { Id = 19539794011543, Email = Emails.EmailTestJudson2, Name = Users.TestNameJudson, OrganizationId = Organizations.Nations, Suspended = false },
                 //new() { Id = 17793394708887, Email = Emails.EmailNationsAustinStephens, Name = Users.TestNameAustin, OrganizationId = Organizations.Nations, Suspended = false },
             ];

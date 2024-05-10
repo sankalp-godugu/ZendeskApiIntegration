@@ -41,6 +41,11 @@
             return $"{TimeZoneInfo.ConvertTime(DateTime.Now.AddDays(-7), TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time")).Date:M-dd}";
         }
 
+        public static string GetDate6DaysLaterInEst()
+        {
+            return TimeZoneInfo.ConvertTime(DateTime.Now.AddDays(6), TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time")).Date.ToLongDateString();
+        }
+
         public static DateTime GetCurrentTimeInEst()
         {
             TimeZoneInfo easternZone = TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time");
@@ -50,7 +55,7 @@
         public static class Limits
         {
             public const int PageSize = 1000;
-            public const int BulkCreateMembershipsBatchSize = 100;
+            public const int BatchSize = 100;
             public const int MaxAttempts = 1;
             public const int SleepTime = 2400;
             public const int Timeout = 30000;
@@ -71,7 +76,8 @@
             public const string Status = "Status";
             public const string EndUsers = "End Users";
             public const string Cohort = "Cohort";
-            public static readonly string[] Headers = ["Organization", "End User", "Email", "Status", "Timestamp"];
+            public static readonly string[] HeadersNotifiedUsers = ["Organization", "End User", "Email", "Status", "Timestamp"];
+            public static readonly string[] HeadersSuspendedUsers = ["Organization", "End User", "Email", "Status"];
         }
         public static readonly Dictionary<string, string> TestUsers = new()
         {

@@ -16,6 +16,7 @@ using static ZendeskApiIntegration.Utilities.Constants;
 using Columns = ZendeskApiIntegration.Utilities.Constants.Columns;
 using Filter = ZendeskApiIntegration.Model.Filter;
 using Sheets = ZendeskApiIntegration.Utilities.Constants.Sheets;
+using User = ZendeskApiIntegration.Model.User;
 
 namespace ZendeskApiIntegration.App.Services
 {
@@ -133,10 +134,10 @@ namespace ZendeskApiIntegration.App.Services
 
                 // API URL
                 string baseUrl = "https://nationsbenefits.zendesk.com/api/v2/search/export";
-                string query = "?filter[type]=ticket&page[size]=1000&query=group:18731640267543 subject:\" - Request Type: \" requester:meptozendesk@nationsbenefits.com description:\"Order ID: \"";
+                string query = $"?filter[type]=ticket&page[size]={Limits.PageSize}&query=group:18731640267543 subject:\" - Request Type: \" requester:meptozendesk@nationsbenefits.com description:\"Order ID: \"";
                 if (i % 2 == 1)
                 {
-                    query = "?filter[type]=ticket&page[size]=1000&query=group:18731640267543 subject:\" - Request Type: \" requester:meptozendesk@nationsbenefits.com description:\"Order ID: \" description:\"Request Type: \"";
+                    query = $"?filter[type]=ticket&page[size]={Limits.PageSize}&query=group:18731640267543 subject:\" - Request Type: \" requester:meptozendesk@nationsbenefits.com description:\"Order ID: \" description:\"Request Type: \"";
                 }
 
                 string apiUrl = baseUrl + query;
@@ -161,11 +162,11 @@ namespace ZendeskApiIntegration.App.Services
 
                 // CALL UPDATE MANY TICKETS ENDPOINT to reassign tickets to proper group
                 // 100 at a time, so loop 10 times
-                for (int start = 0; start < 1000; start += 100)
+                for (int start = 0; start < Limits.PageSize; start += Limits.BatchSize)
                 {
                     UpdateManyTicketsRequest subset = new()
                     {
-                        tickets = updateManyTicketsRequest.tickets.Skip(start).Take(100).ToList()
+                        tickets = updateManyTicketsRequest.tickets.Skip(start).Take(Limits.BatchSize).ToList()
                     };
                     string json = JsonConvert.SerializeObject(subset);
                     StringContent sc = new(json, Encoding.UTF8, "application/json");
@@ -204,7 +205,7 @@ namespace ZendeskApiIntegration.App.Services
                     if (groupMembershipsWrapper.GroupMemberships.Count > 0)
                     {
                         int totalGroupMemberships = groupMembershipsWrapper.GroupMemberships.Count;
-                        int batchSize = Limits.BulkCreateMembershipsBatchSize;
+                        int batchSize = Limits.BatchSize;
                         int remainingGroupMemberships = totalGroupMemberships;
                         bool hasMoreToProcess = true;
 
@@ -443,6 +444,20 @@ namespace ZendeskApiIntegration.App.Services
             return ConvertWorkbookToList(FilePath.ListOfEndUsersNotifiedLastWeek);
         }
 
+        public async Task GetUserOrganizations(List<User> users, ILogger logger)
+        {
+            HttpClient client = httpClientFactory.CreateClient("ZD");
+            List<Task<HttpResponseMessage>> tasks = new();
+            
+            foreach(var user in users)
+            {
+                HttpResponseMessage response = await client.GetAsync($"organizations/{user.OrganizationId}");
+                string result = await response.Content.ReadAsStringAsync();
+                ShowOrganizationResponse? org = JsonConvert.DeserializeObject<ShowOrganizationResponse>(result);
+                user.OrganizationName = org?.Organization?.Name;
+            }
+        }
+
         public async Task<ShowJobStatusResponse> SuspendUsers(bool shouldSuspend, List<User> users, ILogger log)
         {
             ShowJobStatusResponse showJobStatusResponse = new();
@@ -459,31 +474,39 @@ namespace ZendeskApiIntegration.App.Services
 
                 string json = JsonConvert.SerializeObject(user);
                 StringContent sc = new(json, Encoding.UTF8, "application/json");
-                string userIds = string.Join(',', users.Select(u => u.Id));
+                
                 HttpClient client = httpClientFactory.CreateClient("ZD");
 
                 log.LogInformation($"Suspending end users...");
                 int numAttempts = 0;
-                while (numAttempts < Limits.MaxAttempts)
-                {
-                    HttpResponseMessage response = await client.PutAsync($"users/update_many?ids={userIds}", sc);
-                    if (response.IsSuccessStatusCode)
+                for (int i = 0; i < i + users.Count; i += Limits.BatchSize) {
+
+                    int startIndex = i;
+                    int endIndex = Math.Min(i + Limits.BatchSize, users.Count);
+                    List<User> batchOfUsers = users.GetRange(startIndex, endIndex - startIndex);
+                    string userIds = string.Join(',', batchOfUsers.Select(u => u.Id));
+                    numAttempts = 0;
+                    while (numAttempts < Limits.MaxAttempts)
                     {
-                        log.LogInformation($"Queued job to suspend end users...");
-                        string result = await response.Content.ReadAsStringAsync();
-                        showJobStatusResponse = JsonConvert.DeserializeObject<ShowJobStatusResponse>(result);
-                        do
+                        HttpResponseMessage response = await client.PutAsync($"users/update_many?ids={userIds}", sc);
+                        if (response.IsSuccessStatusCode)
                         {
-                            response = await client.GetAsync($"job_statuses/{showJobStatusResponse.JobStatus.Id}");
-                            if (response.IsSuccessStatusCode)
+                            log.LogInformation($"Queued job to suspend end users...");
+                            string result = await response.Content.ReadAsStringAsync();
+                            showJobStatusResponse = JsonConvert.DeserializeObject<ShowJobStatusResponse>(result);
+                            do
                             {
-                                result = await response.Content.ReadAsStringAsync();
-                                showJobStatusResponse = JsonConvert.DeserializeObject<ShowJobStatusResponse>(result);
-                            }
-                        } while (showJobStatusResponse.JobStatus.Status is JobStatuses.Queued
-                                    or JobStatuses.Working);
+                                response = await client.GetAsync($"{showJobStatusResponse.JobStatus.Url}");
+                                if (response.IsSuccessStatusCode)
+                                {
+                                    result = await response.Content.ReadAsStringAsync();
+                                    showJobStatusResponse = JsonConvert.DeserializeObject<ShowJobStatusResponse>(result);
+                                }
+                            } while (showJobStatusResponse.JobStatus.Status == JobStatuses.Queued
+                                        || showJobStatusResponse.JobStatus.Status is JobStatuses.Working);
+                        }
+                        numAttempts++;
                     }
-                    numAttempts++;
                 }
 
                 await BuildReport(showJobStatusResponse, users, log);
@@ -499,14 +522,14 @@ namespace ZendeskApiIntegration.App.Services
         {
             try
             {
-                XLWorkbook workbook = CreateWorkbook(Columns.Headers, users, FilePath.ListOfEndUsersSuspended, [Sheets.EndUsers]);
+                XLWorkbook workbook = CreateWorkbook(Columns.HeadersSuspendedUsers, users, FilePath.ListOfEndUsersSuspended, [Sheets.EndUsers]);
                 _ = workbook.TryGetWorksheet(Sheets.EndUsers, out IXLWorksheet sheet);
                 ApplyFiltersAndSaveReport(workbook);
 
                 foreach (JobResult response in showJobStatusResponse.JobStatus.Results)
                 {
                     User userToAdd = users.FirstOrDefault(user => response.Id == user.Id);
-                    await AddUserToSheet(userToAdd, response.SuspensionStatus, GetCurrentTimeInEst(), sheet, workbook);
+                    await AddUserToSheet(userToAdd, response.SuspensionStatus, GetCurrentTimeInEst(), sheet, workbook, Columns.HeadersSuspendedUsers);
                 }
             }
             catch (Exception ex)
@@ -521,14 +544,14 @@ namespace ZendeskApiIntegration.App.Services
         /// <param name="users">list of inactive non-Nations end users that are part of an organization</param>
         /// <param name="log"></param>
         /// <returns>0 if success, -1 if fail</returns>
-        public int NotifyClientServices(List<User> users, ILogger log)
+        public async Task<int> NotifyClientServices(List<User> users, ILogger log)
         {
             string smtpServer = Environment.GetEnvironmentVariable("smtpServer");
             int smtpPort = int.Parse(Environment.GetEnvironmentVariable("smtpPort"));
             string smtpUsername = Environment.GetEnvironmentVariable("smtpUsername");
             string smtpPassword = Environment.GetEnvironmentVariable("smtpPassword");
             string fromAddress = Emails.FromAddress;
-            string toAddress = users.FirstOrDefault().Email; //Emails.ToAddress;
+            string toAddress = Emails.ToAddress;
             string subject = Emails.SubjectClientServices;
 
             using SmtpClient client = new(smtpServer, smtpPort)
@@ -544,9 +567,8 @@ namespace ZendeskApiIntegration.App.Services
             {
                 IsBodyHtml = false
             };
-            message.CC.Add(Emails.EmailTestAustinPersonal);
-            //message.CC.Add(Emails.ToAddressCC);
-            //message.CC.Add(Emails.EmailNationsDavidDandridge);
+            message.CC.Add(Emails.ToAddressCC);
+            message.CC.Add(Emails.EmailNationsDavidDandridge);
 
             Attachment attachment = new(FilePath.ListOfEndUsersSuspended);
             message.Attachments.Add(attachment);
@@ -590,15 +612,13 @@ namespace ZendeskApiIntegration.App.Services
         /// <returns></returns>
         public async Task<int> NotifyEndUsers(List<User> users, ILogger log)
         {
-            IEnumerable<User> temp = users.Where(u => u.OrganizationId == 16807567180439);
-            IEnumerable<User> temp2 = users.Where(u => u.OrganizationId is null || !u.OrganizationId.HasValue);
             string smtpServer = Environment.GetEnvironmentVariable("smtpServer");
             int smtpPort = int.Parse(Environment.GetEnvironmentVariable("smtpPort"));
             string smtpUsername = Environment.GetEnvironmentVariable("smtpUsername");
             string smtpPassword = Environment.GetEnvironmentVariable("smtpPassword");
             string fromAddress = Emails.FromAddress;
             string subject = Emails.SubjectEndUsers;
-            string loginBy = DateTime.Now.AddDays(6).Date.ToLongDateString();
+            string loginBy = GetDate6DaysLaterInEst();
 
             using SmtpClient client = new(smtpServer, smtpPort)
             {
@@ -611,7 +631,7 @@ namespace ZendeskApiIntegration.App.Services
             List<User> usersFailedToNotify = [];
             users = [.. users.OrderBy(u => u.Id)];
 
-            XLWorkbook workbook = CreateWorkbook(Columns.Headers, users, FilePath.ListOfEndUsersNotified, [Sheets.EndUsers]);
+            XLWorkbook workbook = CreateWorkbook(Columns.HeadersNotifiedUsers, users, FilePath.ListOfEndUsersNotified, [Sheets.EndUsers]);
             _ = workbook.TryGetWorksheet(Sheets.EndUsers, out IXLWorksheet sheet);
             ApplyFiltersAndSaveReport(workbook);
 
@@ -633,14 +653,14 @@ namespace ZendeskApiIntegration.App.Services
                         log.LogInformation($"Sending email to {user.Name} ({user.Email})...");
                         client.Send(message);
                         usersNotifiedSuccessfully.Add(user);
-                        await AddUserToSheet(user, JobStatuses.Completed, GetCurrentTimeInEst(), sheet, workbook);
+                        await AddUserToSheet(user, JobStatuses.Completed, GetCurrentTimeInEst(), sheet, workbook, Columns.HeadersNotifiedUsers);
                         break;
                     }
                     catch (Exception ex)
                     {
                         log.LogInformation($"Failed to send email: {ex.Message}");
                         usersFailedToNotify.Add(user);
-                        await AddUserToSheet(user, JobStatuses.Failed, GetCurrentTimeInEst(), sheet, workbook);
+                        await AddUserToSheet(user, JobStatuses.Failed, GetCurrentTimeInEst(), sheet, workbook, Columns.HeadersNotifiedUsers);
                     }
 
                     numAttempts++;
@@ -746,7 +766,6 @@ Note: This email and any attachments may contain information that is confidentia
             {
                 IXLWorksheet worksheet = OpenWorksheet(workbook, sheet);
 
-                // populate header row
                 for (int i = 0; i < headers.Length; i++)
                 {
                     worksheet.Cell(1, i + 1).Value = headers[i];
@@ -764,13 +783,13 @@ Note: This email and any attachments may contain information that is confidentia
                 worksheet.Cell(1, i + 1).Value = headers[i];
             }
         }
-        public async Task AddUserToSheet(User user, string status, DateTime time, IXLWorksheet worksheet, XLWorkbook workbook)
+        private async Task AddUserToSheet(User user, string status, DateTime time, IXLWorksheet worksheet, XLWorkbook workbook, string[] headers)
         {
             try
             {
                 if (worksheet.FirstRow().IsEmpty())
                 {
-                    AddHeaders(Columns.Headers, worksheet);
+                    AddHeaders(headers, worksheet);
                 }
 
                 HttpClient client = httpClientFactory.CreateClient("ZD");
@@ -925,11 +944,6 @@ Note: This email and any attachments may contain information that is confidentia
             }
 
             return userList;
-        }
-
-        Task<int> IZendeskClientService.NotifyClientServices(List<User> users, ILogger log)
-        {
-            throw new NotImplementedException();
         }
 
         // Define a custom equality comparer based on the UserId property
