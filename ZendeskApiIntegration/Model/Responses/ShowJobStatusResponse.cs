@@ -5,7 +5,7 @@ namespace ZendeskApiIntegration.Model.Responses
 {
     public class ShowJobStatusResponse
     {
-        public required JobStatus JobStatus { get; set; }
+        public JobStatus JobStatus { get; set; }
     }
 
     public class JobStatus
@@ -23,9 +23,9 @@ namespace ZendeskApiIntegration.Model.Responses
 
     public class JobResult
     {
-        public required string Action { get; set; }
+        public string? Action { get; set; }
         public long Id { get; set; }
-        public required string Status { get; set; }
+        public string? Status { get; set; }
         public bool Success { get; set; }
         public string? SuspensionStatus => Success ? UserStatuses.Suspended : UserStatuses.Active;
     }

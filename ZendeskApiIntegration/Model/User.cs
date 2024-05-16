@@ -48,7 +48,7 @@ public class User
     public string? Locale { get; set; }
 
     [JsonProperty(PropertyName = "organization_id")]
-    public long? OrganizationId { get; set; }
+    public int? OrganizationId { get; set; }
     public string? OrganizationName { get; set; }
 
     public string? Role { get; set; }
@@ -114,7 +114,7 @@ public class User
 
     // custom fields
     public DateTime? LastLoginAtDt => DateTime.TryParse(LastLoginAt, out DateTime LastLoginAtDt) ? LastLoginAtDt : null;
-    public string? Status => Suspended == true ? "Suspended" : "Active";
+    public string? SuspensionStatus => Suspended == true ? "Suspended" : "Active";
     public bool ShouldSuspend => LastLoginAtDt > DateTime.Now.AddMonths(-1);
 }
 
@@ -154,7 +154,7 @@ public class MediaItem
 
 public class Photo : MediaItem
 {
-    public required List<Thumbnail> Thumbnails { get; set; }
+    public List<Thumbnail> Thumbnails { get; set; }
 }
 
 public class Thumbnail : MediaItem

@@ -16,19 +16,15 @@ namespace ZendeskApiIntegration.App.Interfaces
         /// <param name="logger">Logger.<see cref="ILogger"/></param>
         /// <returns>Returns the list of contacts from Zendesk.</returns>
         public Task CreateGroupMemberships(ILogger logger);
-        /// <summary>
-        /// Get contact list export Uri from Zendesk asychronously.
-        /// </summary>
-        /// <param name="logger">Logger.<see cref="ILogger"/></param>
-        /// <returns>Returns the list of contacts from Zendesk.</returns>
-        public Task<List<User>> GetInactiveUsers(Filter filter, ILogger logger);
+
+        public Task<List<User>> GetAllEndUsers(Filter filter, ILogger logger);
         public List<User> GetEndUsersFromLastReport(List<User> users, ILogger logger);
         /// <summary>
         /// Suspends a list of users
         /// </summary>
         /// <param name="logger"></param>
         /// <returns>count of users suspended</returns>
-        public Task<ShowJobStatusResponse> SuspendUsers(bool shouldSuspend, List<User> users, ILogger logger);
+        public Task<ShowJobStatusResponse> SuspendEndUsers(bool shouldSuspend, List<User> users, ILogger logger);
         /// <summary>
         /// Get contact list download Url from Zendesk asychronously.
         /// </summary>
@@ -43,6 +39,7 @@ namespace ZendeskApiIntegration.App.Interfaces
         public Task DeleteTickets(ILogger logger);
         public Task<List<Ticket>> GetTicketsWithIncorrectAddress(ILogger logger);
         public Task<int> NotifyEndUsers(List<User> users, ILogger log);
-        public Task<int> NotifyClientServices(List<User> users, ILogger log);
+        public Task<int> NotifyClientServices(ILogger log);
+        public Task BuildReport(List<User> users, string status, ILogger log);
     }
 }

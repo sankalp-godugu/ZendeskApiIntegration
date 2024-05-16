@@ -22,13 +22,13 @@
         };
         public static class FilePath
         {
-            public static readonly string ListOfEndUsersNotified = @$"C:\Users\Sankalp.Godugu\OneDrive - NationsBenefits\Documents\Business\Zendesk Integration\EndUserSuspension\{GetCurrentDateInEst()}\ListOfEndUsersNotified_{GetCurrentDateInEst()}.xlsx";
+            public static readonly string ListOfEndUsers = @$"C:\Users\Sankalp.Godugu\OneDrive - NationsBenefits\Documents\Business\Zendesk Integration\EndUserSuspension\{GetCurrentDateInEst()}\ListOfEndUsers_{GetCurrentDateInEst()}.xlsx";
 
-            public static readonly string ListOfEndUsersSuspended = @$"C:\Users\Sankalp.Godugu\OneDrive - NationsBenefits\Documents\Business\Zendesk Integration\EndUserSuspension\{GetCurrentDateInEst()}\ListOfEndUsersSuspended_{GetCurrentDateInEst()}.xlsx";
+            //public static readonly string ListOfEndUsersSuspended = @$"C:\Users\Sankalp.Godugu\OneDrive - NationsBenefits\Documents\Business\Zendesk Integration\EndUserSuspension\{GetCurrentDateInEst()}\ListOfEndUsersSuspended_{GetCurrentDateInEst()}.xlsx";
 
             public static readonly string ListOfEndUsersNotifiedLastWeek = @$"C:\Users\Sankalp.Godugu\OneDrive - NationsBenefits\Documents\Business\Zendesk Integration\EndUserSuspension\{GetDate7DaysAgoInEst()}\ListOfEndUsersNotified_{GetDate7DaysAgoInEst()}.xlsx";
 
-            public static readonly string ListOfEndUsersSuspendedLastWeek = @$"C:\Users\Sankalp.Godugu\OneDrive - NationsBenefits\Documents\Business\Zendesk Integration\EndUserSuspension\{GetDate7DaysAgoInEst()}\ListOfEndUsersSuspended_{GetDate7DaysAgoInEst()}.xlsx";
+            //public static readonly string ListOfEndUsersSuspendedLastWeek = @$"C:\Users\Sankalp.Godugu\OneDrive - NationsBenefits\Documents\Business\Zendesk Integration\EndUserSuspension\{GetDate7DaysAgoInEst()}\ListOfEndUsersSuspended_{GetDate7DaysAgoInEst()}.xlsx";
         }
 
         public static string GetCurrentDateInEst()
@@ -50,6 +50,12 @@
         {
             TimeZoneInfo easternZone = TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time");
             return TimeZoneInfo.ConvertTime(DateTime.Now, easternZone);
+        }
+
+        public static DateTime ConvertToEst(DateTime dateTime)
+        {
+            TimeZoneInfo easternZone = TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time");
+            return TimeZoneInfo.ConvertTime(dateTime, easternZone);
         }
 
         public static class Limits
@@ -74,7 +80,7 @@
             public const string Timestamp = "Timestamp";
             public const string EndUsers = "End Users";
             public const string Cohort = "Cohort";
-            public static readonly string[] ColumnHeaders = ["Organization", "Name", "Email", "Status", "Timestamp"];
+            public static readonly string[] ColumnHeaders = ["Organization", "End User", "Email", "Last Login At", "Status", "Timestamp"];
         }
         public static readonly Dictionary<string, string> TestUsers = new()
         {
@@ -128,11 +134,16 @@
         {
             public const string Updated = "Updated";
         }
+        public static class EmailStatuses
+        {
+            public const string Notified = "Notification Sent";
+            public const string FailedToNotify = "Notification Failed";
+        }
         public static class UserStatuses
         {
-            public const string Notified = "Notified";
             public const string Suspended = "Suspended";
             public const string Active = "Active";
+            public const string LoggedBackIn = "Logged Back In";
         }
         public static class JobStatuses
         {

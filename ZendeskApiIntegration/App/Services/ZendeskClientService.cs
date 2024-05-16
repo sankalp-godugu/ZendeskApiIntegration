@@ -199,7 +199,7 @@ namespace ZendeskApiIntegration.App.Services
             List<User> usersFromZendesk = await GetUsers(query, log);
             if (usersFromZendesk?.Count > 0)
             {
-                foreach (long groupId in Groups.Select(g => g.Key))
+                foreach (long groupId in Constants.Groups.Select(g => g.Key))
                 {
                     GroupMembershipsWrapper groupMembershipsWrapper = ConstructBulkGroupMembershipAssignmentJSON(usersFromZendesk, groupId);
                     if (groupMembershipsWrapper.GroupMemberships.Count > 0)
@@ -425,37 +425,57 @@ namespace ZendeskApiIntegration.App.Services
             }
             return [];
         }
-        public async Task<List<User>> GetInactiveUsers(Filter filter, ILogger logger)
+        public async Task<List<User>> GetAllEndUsers(Filter filter, ILogger logger)
         {
-            List<User> endUsers = await GetUsers($"type:{filter.Type} role:{filter.Role} -organization_id:{filter.OrgId} -organization_id:none", logger);
-
-            return endUsers.Where(u =>
-                   u.Role == Roles.EndUser
-                   && u.OrganizationId is not null
-                   && u.OrganizationId != Organizations.Nations
-                && u.LastLoginAt is not null
-                && u.LastLoginAtDt < DateTime.Now.AddMonths(-1)
-            ).ToList();
+            List<User> endUsers = await GetUsers($"type:{filter.Type} role:{filter.Role}", logger);
+            return endUsers;
         }
-        public List<User> GetEndUsersFromLastReport(List<User> inactiveUsers, ILogger logger)
+        public List<User> GetEndUsersFromLastReport(List<User> users, ILogger logger)
         {
-            return ConvertWorkbookToList(FilePath.ListOfEndUsersNotifiedLastWeek);
+            return ConvertWorkbookToList(FilePath.ListOfEndUsersNotifiedLastWeek, users);
         }
-
         public async Task GetUserOrganizations(List<User> users, ILogger logger)
         {
-            HttpClient client = httpClientFactory.CreateClient("ZD");
-
-            foreach (User user in users)
+            try
             {
-                HttpResponseMessage response = await client.GetAsync($"organizations/{user.OrganizationId}");
-                string result = await response.Content.ReadAsStringAsync();
-                ShowOrganizationResponse? org = JsonConvert.DeserializeObject<ShowOrganizationResponse>(result);
-                user.OrganizationName = org?.Organization?.Name;
+                HttpClient client = httpClientFactory.CreateClient("ZD");
+                // CONSTRUCT INPUT FROM API RESPONSE
+                var orgIds = string.Empty;
+                foreach (long? orgId in users.Select(u => u.OrganizationId))
+                {
+                    orgIds += orgId + ",";
+                }
+                orgIds = orgIds.Trim(',');
+                HttpResponseMessage response = await client.GetAsync($"organizations/show_many?ids={orgIds}");
+                ShowOrganizationsResponse? showOrganizationsResponse = new();
+                if (response.IsSuccessStatusCode)
+                {
+                    string result = await response.Content.ReadAsStringAsync();
+                    showOrganizationsResponse = JsonConvert.DeserializeObject<ShowOrganizationsResponse>(result);
+                }
+
+                while (showOrganizationsResponse?.NextPage is not null)
+                {
+                    response = await client.GetAsync(showOrganizationsResponse.NextPage);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        string result = await response.Content.ReadAsStringAsync();
+                        var temp = JsonConvert.DeserializeObject<ShowOrganizationsResponse>(result);
+                        showOrganizationsResponse.Organizations.AddRange(temp.Organizations);
+                    }
+                }
+
+                foreach (var user in users)
+                {
+                    user.OrganizationName = user.OrganizationName is null ? showOrganizationsResponse?.Organizations?.FirstOrDefault(o => o.Id == user.OrganizationId)?.Name : user.OrganizationName;
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogInformation(ex.Message);
             }
         }
-
-        public async Task<ShowJobStatusResponse> SuspendUsers(bool shouldSuspend, List<User> users, ILogger log)
+        public async Task<ShowJobStatusResponse> SuspendEndUsers(bool shouldSuspend, List<User> users, ILogger log)
         {
             ShowJobStatusResponse showJobStatusResponse = new();
 
@@ -476,7 +496,7 @@ namespace ZendeskApiIntegration.App.Services
 
                 log.LogInformation($"Suspending end users...");
                 int numAttempts = 0;
-                for (int i = 0; i < i + users.Count; i += Limits.BatchSize)
+                for (int i = 0; i < users.Count; i += Limits.BatchSize)
                 {
                     int startIndex = i;
                     int endIndex = Math.Min(i + Limits.BatchSize, users.Count);
@@ -486,7 +506,7 @@ namespace ZendeskApiIntegration.App.Services
                     HttpResponseMessage response = new();
                     do
                     {
-                        _ = await client.PutAsync($"users/update_many?ids={userIds}", sc);
+                        response = await client.PutAsync($"users/update_many?ids={userIds}", sc);
                         //response.StatusCode = HttpStatusCode.InternalServerError;
                         if (response.IsSuccessStatusCode)
                         {
@@ -510,7 +530,7 @@ namespace ZendeskApiIntegration.App.Services
                     } while (numAttempts < Limits.MaxAttempts && !response.IsSuccessStatusCode);
                 }
 
-                await BuildReport(showJobStatusResponse, users, log);
+                await BuildReportFromJobStatus(showJobStatusResponse, users, log);
             }
             catch (Exception ex)
             {
@@ -519,25 +539,43 @@ namespace ZendeskApiIntegration.App.Services
 
             return showJobStatusResponse;
         }
-        private async Task BuildReport(ShowJobStatusResponse showJobStatusResponse, List<User> users, ILogger log)
+        public async Task BuildReport(List<User> users, string status, ILogger log)
         {
             try
             {
-                XLWorkbook workbook = CreateWorkbook(Columns.ColumnHeaders, users, FilePath.ListOfEndUsersSuspended, [Sheets.EndUsers]);
-                _ = workbook.TryGetWorksheet(Sheets.EndUsers, out IXLWorksheet sheet);
-                ApplyFiltersAndSaveReport(workbook);
+                using XLWorkbook workbook = CreateWorkbook(Columns.ColumnHeaders, users, FilePath.ListOfEndUsers, [Sheets.EndUsers]);
+                IXLWorksheet sheet = OpenWorksheet(workbook, Sheets.EndUsers);
+                //ClearWorksheet(sheet);
+                ApplyFiltersAndSaveReport(workbook, FilePath.ListOfEndUsers);
 
-                foreach (JobResult response in showJobStatusResponse.JobStatus.Results)
+                foreach (User user in users)
                 {
-                    User userToAdd = users.FirstOrDefault(user => response.Id == user.Id);
-                    await AddUserToSheet(userToAdd, response.SuspensionStatus, GetCurrentTimeInEst(), sheet, workbook, Columns.ColumnHeaders);
+                    await AddUserToSheet(user, status, sheet, workbook, Columns.ColumnHeaders);
                 }
             }
             catch (Exception ex)
             {
                 log.LogInformation("Error building report: " + ex.Message);
             }
+        }
+        private async Task BuildReportFromJobStatus(ShowJobStatusResponse showJobStatusResponse, List<User> users, ILogger log)
+        {
+            try
+            {
+                using XLWorkbook workbook = CreateWorkbook(Columns.ColumnHeaders, users, FilePath.ListOfEndUsers, [Sheets.EndUsers]);
+                IXLWorksheet sheet = OpenWorksheet(workbook, Sheets.EndUsers);
+                ApplyFiltersAndSaveReport(workbook, FilePath.ListOfEndUsers);
 
+                foreach (JobResult response in showJobStatusResponse.JobStatus.Results)
+                {
+                    User? userToAdd = users.FirstOrDefault(user => response.Id == user.Id);
+                    if (userToAdd is not null) await AddUserToSheet(userToAdd, response.SuspensionStatus, sheet, workbook, Columns.ColumnHeaders);
+                }
+            }
+            catch (Exception ex)
+            {
+                log.LogInformation("Error building report: " + ex.Message);
+            }
         }
         /// <summary>
         /// sends an email to client services with list of end users that have been suspended
@@ -545,7 +583,7 @@ namespace ZendeskApiIntegration.App.Services
         /// <param name="users">list of inactive non-Nations end users that are part of an organization</param>
         /// <param name="log"></param>
         /// <returns>0 if success, -1 if fail</returns>
-        public static int NotifyClientServices(List<User> users, ILogger log)
+        public async Task<int> NotifyClientServices(ILogger log)
         {
             string smtpServer = Environment.GetEnvironmentVariable("smtpServer");
             int smtpPort = int.Parse(Environment.GetEnvironmentVariable("smtpPort"));
@@ -553,6 +591,7 @@ namespace ZendeskApiIntegration.App.Services
             string smtpPassword = Environment.GetEnvironmentVariable("smtpPassword");
             string fromAddress = Emails.FromAddress;
             string toAddress = Emails.ToAddress;
+            //string toAddress = Emails.MyEmail;
             string subject = Emails.SubjectClientServices;
 
             using SmtpClient client = new(smtpServer, smtpPort)
@@ -570,8 +609,9 @@ namespace ZendeskApiIntegration.App.Services
             };
             message.CC.Add(Emails.ToAddressCC);
             message.CC.Add(Emails.EmailNationsDavidDandridge);
+            message.CC.Add(Emails.EmailNationsAustinStephens);
 
-            Attachment attachment = new(FilePath.ListOfEndUsersSuspended);
+            Attachment attachment = new(FilePath.ListOfEndUsers);
             message.Attachments.Add(attachment);
 
             int numAttempts = 0;
@@ -632,9 +672,9 @@ namespace ZendeskApiIntegration.App.Services
             List<User> usersFailedToNotify = [];
             users = [.. users.OrderBy(u => u.Id)];
 
-            XLWorkbook workbook = CreateWorkbook(Columns.ColumnHeaders, users, FilePath.ListOfEndUsersNotified, [Sheets.EndUsers]);
+            using XLWorkbook workbook = CreateWorkbook(Columns.ColumnHeaders, users, FilePath.ListOfEndUsers, [Sheets.EndUsers]);
             _ = workbook.TryGetWorksheet(Sheets.EndUsers, out IXLWorksheet sheet);
-            ApplyFiltersAndSaveReport(workbook);
+            ApplyFiltersAndSaveReport(workbook, FilePath.ListOfEndUsers);
 
             foreach (User user in users)
             {
@@ -654,14 +694,14 @@ namespace ZendeskApiIntegration.App.Services
                         log.LogInformation($"Sending email to {user.Name} ({user.Email})...");
                         client.Send(message);
                         usersNotifiedSuccessfully.Add(user);
-                        await AddUserToSheet(user, JobStatuses.Completed, GetCurrentTimeInEst(), sheet, workbook, Columns.ColumnHeaders);
+                        await AddUserToSheet(user, EmailStatuses.Notified, sheet, workbook, Columns.ColumnHeaders);
                         break;
                     }
                     catch (Exception ex)
                     {
                         log.LogInformation($"Failed to send email: {ex.Message}");
                         usersFailedToNotify.Add(user);
-                        await AddUserToSheet(user, JobStatuses.Failed, GetCurrentTimeInEst(), sheet, workbook, Columns.ColumnHeaders);
+                        await AddUserToSheet(user, EmailStatuses.FailedToNotify, sheet, workbook, Columns.ColumnHeaders);
                     }
 
                     numAttempts++;
@@ -735,9 +775,9 @@ Note: This email and any attachments may contain information that is confidentia
         {
             bool sheetExists = workbook.TryGetWorksheet(name, out IXLWorksheet worksheet);
 
-            return sheetExists ? worksheet : workbook.Worksheet(1) ?? workbook.AddWorksheet(name, pos);
+            return sheetExists ? worksheet : workbook.Worksheets.FirstOrDefault() ?? workbook.AddWorksheet(name, pos);
         }
-        private XLWorkbook CreateWorkbook(string[] headers, List<User> users, string filePath, string[] sheets)
+        private static XLWorkbook CreateWorkbook(string[] headers, List<User> users, string filePath, string[] sheets)
         {
             XLWorkbook workbook = OpenWorkbook(filePath);
 
@@ -762,7 +802,7 @@ Note: This email and any attachments may contain information that is confidentia
                 worksheet.Cell(1, i + 1).Value = headers[i];
             }
         }
-        private async Task AddUserToSheet(User user, string status, DateTime time, IXLWorksheet worksheet, XLWorkbook workbook, string[] headers)
+        private async Task AddUserToSheet(User user, string status, IXLWorksheet worksheet, XLWorkbook workbook, string[] headers)
         {
             try
             {
@@ -771,25 +811,21 @@ Note: This email and any attachments may contain information that is confidentia
                     AddHeaders(headers, worksheet);
                 }
 
-                HttpClient client = httpClientFactory.CreateClient("ZD");
-                HttpResponseMessage response = await client.GetAsync($"organizations/{user.OrganizationId}");
-                string result = await response.Content.ReadAsStringAsync();
-                ShowOrganizationResponse? org = JsonConvert.DeserializeObject<ShowOrganizationResponse>(result);
-
                 int row = worksheet.LastRowUsed() is null ? 2 : worksheet.LastRowUsed().RowNumber() + 1;
-                worksheet.Cell(row, 1).Value = org?.Organization?.Name;
+                worksheet.Cell(row, 1).Value = user.OrganizationName;
                 worksheet.Cell(row, 2).Value = user.Name;
                 worksheet.Cell(row, 3).Value = user.Email;
-                worksheet.Cell(row, 4).Value = status.ToString();
-                worksheet.Cell(row, 5).Value = time.ToString("hh:mm:ss tt");
+                worksheet.Cell(row, 4).Value = ConvertToEst(user.LastLoginAtDt.GetValueOrDefault()).ToString("MM/dd/yyyy hh:mm:ss tt");
+                worksheet.Cell(row, 5).Value = status.ToString();
+                worksheet.Cell(row, 6).Value = GetCurrentTimeInEst().ToString("MM/dd/yyyy hh:mm:ss tt");
                 workbook.Save();
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-
+                
             }
         }
-        private static void ApplyFiltersAndSaveReport(XLWorkbook workbook)
+        private static void ApplyFiltersAndSaveReport(XLWorkbook workbook, string filePath)
         {
             // Check if the worksheet exists
             //DeleteWorkbook(filePath);
@@ -798,7 +834,7 @@ Note: This email and any attachments may contain information that is confidentia
             {
 
                 // Add a new worksheet with the same name
-                ClearWorksheet(worksheet);
+                //ClearWorksheet(worksheet);
 
                 // Format header row
                 FormatHeaderRow(worksheet.Row(1));
@@ -813,11 +849,11 @@ Note: This email and any attachments may contain information that is confidentia
                 SetColumnWidths(worksheet);
 
                 // Apply filters to specific columns
-                ApplyFilters(worksheet, 5, "Reimbursement");
-                ApplyFilters(worksheet, 5, "2024");
+                //ApplyFilters(worksheet, 5, "Reimbursement");
+                //ApplyFilters(worksheet, 5, "2024");
             }
 
-            SaveWorkbook(FilePath.ListOfEndUsersNotified, workbook);
+            SaveWorkbook(filePath, workbook);
         }
         private static void ClearWorksheet(IXLWorksheet worksheet)
         {
@@ -891,7 +927,7 @@ Note: This email and any attachments may contain information that is confidentia
 
             _ = worksheet.SetAutoFilter().Column(columnIndex).AddFilter(filterCriteria);
         }
-        private static List<User> ConvertWorkbookToList(string filePath, string sheetName = Columns.EndUsers)
+        private static List<User> ConvertWorkbookToList(string filePath, List<User> users = null, string sheetName = Columns.EndUsers)
         {
             List<User> userList = [];
 
@@ -911,32 +947,42 @@ Note: This email and any attachments may contain information that is confidentia
             for (int row = 2; row <= lastRowUsed; row++)
             {
                 User user = new();
+                
 
-                foreach (string? header in headers)
+                for (int i=0; i < headers.Count; i++)
                 {
-                    IXLCell cell = worksheet.Cell(row, headers.IndexOf(header) + 1);
-                    System.Reflection.PropertyInfo? property = typeof(User).GetProperty(header);
-                    property?.SetValue(user, cell.Value.ToString());
+                    IXLCell cell = worksheet.Cell(row, i + 1);
+                    switch (i)
+                    {
+                        case 0:
+                            user.OrganizationName = cell.Value.ToString();
+                            break;
+                        case 1:
+                            user.Name = cell.Value.ToString();
+                            break;
+                        case 2:
+                            user.Email = cell.Value.ToString();
+                            break;
+                        default:
+                            // Handle if there are more columns than expected
+                            break;
+                    }
                 }
+
+                user.Id = users.FirstOrDefault(u => u.Email == user.Email).Id;
+                user.LastLoginAt = users.FirstOrDefault(u => u.Id == user.Id).LastLoginAt;
 
                 userList.Add(user);
             }
 
             return userList;
         }
-
-        Task<int> IZendeskClientService.NotifyClientServices(List<User> users, ILogger log)
-        {
-            throw new NotImplementedException();
-        }
-
-        // Define a custom equality comparer based on the UserId property
         public class UserEmailEqualityComparer : IEqualityComparer<User>
         {
             public bool Equals(User x, User y)
             {
                 // Compare emails case-insensitively
-                return string.Equals(x.Email, y.Email, StringComparison.OrdinalIgnoreCase);
+                return x.Email == y.Email;
             }
 
             public int GetHashCode(User obj)

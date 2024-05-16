@@ -4,7 +4,6 @@ using Microsoft.Extensions.Logging;
 using ZendeskApiIntegration.App.Interfaces;
 using ZendeskApiIntegration.DataLayer.Interfaces;
 using ZendeskApiIntegration.Model;
-using ZendeskApiIntegration.Model.Responses;
 using static ZendeskApiIntegration.App.Services.ZendeskClientService;
 using static ZendeskApiIntegration.Utilities.Constants;
 
@@ -33,29 +32,50 @@ namespace ZendeskApiIntegration.TriggerUtilities
                     string appConnectionString = config["DataBase:APPConnectionString"] ?? Environment.GetEnvironmentVariable("DataBase:ConnectionString");
 
                     log.LogInformation($"C# Timer trigger function executed at: {DateTime.Now}");
-                    log?.LogInformation("********* Member PD Orders => Zendesk End User Suspension Automation **********");
+                    log.LogInformation("********* Member PD Orders => Zendesk End User Suspension Automation **********");
 
-                    Filter filter = new()
+                    Filter allFilter = new()
                     {
-                        LastLoginAt = DateTime.Now.AddMonths(-1).Date.ToString("yyyy-MM-dd"),
-                        OrgId = Organizations.Nations,
                         Role = Roles.EndUser,
                         Type = Types.User
                     };
-                    List<User> inactiveEndUsers = await zendeskClientService.GetInactiveUsers(filter, log);
-                    List<User> endUsersNotifiedLastWeek = zendeskClientService.GetEndUsersFromLastReport(inactiveEndUsers, log);
-                    List<User> inactiveEndUsersToSuspend = inactiveEndUsers.Intersect(endUsersNotifiedLastWeek, new UserEmailEqualityComparer()).ToList();
-                    inactiveEndUsersToSuspend = GetTestUsers();
+                    List<User> allEndUsers = await zendeskClientService.GetAllEndUsers(allFilter, log);
+                    List<User> endUsersNotifiedLastWeek = zendeskClientService.GetEndUsersFromLastReport(allEndUsers, log);
+                    List<User> inactiveEndUsers = allEndUsers.Where(u =>
+                           u.Role == Roles.EndUser
+                        && u.OrganizationId is not null
+                        && u.OrganizationId != Organizations.Nations
+                        && u.LastLoginAt is not null
+                        && u.LastLoginAtDt < DateTime.Now.AddMonths(-1)
+                        && u.Suspended == false
+                    ).ToList();
+                    await zendeskClientService.GetUserOrganizations(inactiveEndUsers, log);
 
-                    await zendeskClientService.GetUserOrganizations(inactiveEndUsersToSuspend, log);
-                    ShowJobStatusResponse suspendUsersResponse = await zendeskClientService.SuspendUsers(true, inactiveEndUsersToSuspend, log);
-                    int notifyClientServicesResponse = await zendeskClientService.NotifyClientServices(inactiveEndUsersToSuspend, log);
+                    var inactiveUsers = allEndUsers.Where(u =>
+                           u.Role == Roles.EndUser
+                        && u.OrganizationId is not null
+                        && u.OrganizationId != Organizations.Nations
+                        && u.LastLoginAt is not null
+                        && u.LastLoginAtDt < DateTime.Now.AddMonths(-1)
+                    ).ToList();
+                    await zendeskClientService.GetUserOrganizations(inactiveUsers, log);
 
-                    List<User> endUsersToNotify = inactiveEndUsers.Except(inactiveEndUsersToSuspend).ToList();
+                    List<User> endUsersLoggedInSinceLastWeek = endUsersNotifiedLastWeek.Except(inactiveUsers, new UserEmailEqualityComparer()).ToList();
+                    List<User> inactiveEndUsersToSuspend = endUsersNotifiedLastWeek.Except(endUsersLoggedInSinceLastWeek, new UserEmailEqualityComparer()).ToList();
+
+                    List<User> endUsersToNotify = inactiveEndUsers.Except(inactiveEndUsersToSuspend, new UserEmailEqualityComparer()).ToList();
                     bool hasUsersToNotify = endUsersToNotify.Count > 0;
                     endUsersToNotify = hasUsersToNotify ? endUsersToNotify : [];
-                    await zendeskClientService.GetUserOrganizations(endUsersToNotify, log);
+                    await zendeskClientService.BuildReport(endUsersLoggedInSinceLastWeek, UserStatuses.LoggedBackIn, log);
 
+                    //List<User> inactiveEndUsersToSuspend = GetTestUsers();
+                    //List<User> endUsersToNotify = GetTestUsers();
+                    //var temp = inactiveEndUsersToSuspend.Intersect(endUsersToNotify, new UserEmailEqualityComparer());
+                    //var temp2 = inactiveEndUsersToSuspend.Intersect(endUsersToNotify, new UserEmailEqualityComparer());
+
+                    await zendeskClientService.BuildReport(inactiveEndUsersToSuspend, UserStatuses.Suspended, log);
+                    //ShowJobStatusResponse suspendUsersResponse = await zendeskClientService.SuspendEndUsers(true, inactiveEndUsersToSuspend, log);
+                    int notifyClientServicesResponse = await zendeskClientService.NotifyClientServices(log);
                     int sendEmailMultipleResult = await zendeskClientService.NotifyEndUsers(endUsersToNotify, log);
 
                     log?.LogInformation("********* Member PD Orders => Zendesk End User Suspension Automation Finished **********");
@@ -96,11 +116,11 @@ namespace ZendeskApiIntegration.TriggerUtilities
         private static List<User> GetTestUsers()
         {
             return [
-                new() { Id = 18139432493847, Email = Emails.MyEmail, Name = Users.MyName, OrganizationId = Organizations.Nations, Suspended = false },
-                new User() { Id = 19641229464983, Email = Emails.EmailTestAustinPersonal, Name = Users.TestNameAustin, OrganizationId = Organizations.Nations, Suspended = false },
-                new() { Id = 19613889634711, Email = Emails.EmailTestJudson, Name = Users.TestNameJudson, OrganizationId = Organizations.Nations, Suspended = false }
-                //new() { Id = 19539794011543, Email = Emails.EmailTestJudson2, Name = Users.TestNameJudson, OrganizationId = Organizations.Nations, Suspended = false },
-                //new() { Id = 17793394708887, Email = Emails.EmailNationsAustinStephens, Name = Users.TestNameAustin, OrganizationId = Organizations.Nations, Suspended = false },
+                new() { Id = 18139432493847, Email = Emails.MyEmail, Name = Users.MyName, OrganizationId = Organizations.Nations, Suspended = false, LastLoginAt = DateTime.Now.ToString() },
+                new User() { Id = 19641229464983, Email = Emails.EmailTestAustinPersonal, Name = Users.TestNameAustin, OrganizationId = Organizations.Nations, OrganizationName = "Nations", Suspended = false, LastLoginAt = DateTime.Now.ToString() },
+                new() { Id = 19613889634711, Email = Emails.EmailTestJudson, Name = Users.TestNameJudson, OrganizationId = Organizations.Nations, OrganizationName = "Nations", Suspended = false, LastLoginAt = DateTime.Now.ToString() }
+                //new() { Id = 19539794011543, Email = Emails.EmailTestJudson2, Name = Users.TestNameJudson, OrganizationId = Organizations.Nations, OrganizationName = "Nations", Suspended = false, LastLoginAt = DateTime.Now.ToString() },
+                //new() { Id = 17793394708887, Email = Emails.EmailNationsAustinStephens, Name = Users.TestNameAustin, OrganizationId = Organizations.Nations, OrganizationName = "Nations", Suspended = false, LastLoginAt = DateTime.Now.ToString() },
             ];
         }
 
