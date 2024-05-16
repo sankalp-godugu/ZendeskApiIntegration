@@ -486,7 +486,7 @@ namespace ZendeskApiIntegration.App.Services
                     HttpResponseMessage response = new();
                     do
                     {
-                        await client.PutAsync($"users/update_many?ids={userIds}", sc);
+                        _ = await client.PutAsync($"users/update_many?ids={userIds}", sc);
                         //response.StatusCode = HttpStatusCode.InternalServerError;
                         if (response.IsSuccessStatusCode)
                         {
@@ -503,7 +503,10 @@ namespace ZendeskApiIntegration.App.Services
                                 }
                             } while (showJobStatusResponse?.JobStatus.Status is JobStatuses.Queued or JobStatuses.Working);
                         }
-                        else numAttempts++;
+                        else
+                        {
+                            numAttempts++;
+                        }
                     } while (numAttempts < Limits.MaxAttempts && !response.IsSuccessStatusCode);
                 }
 
@@ -520,14 +523,14 @@ namespace ZendeskApiIntegration.App.Services
         {
             try
             {
-                XLWorkbook workbook = CreateWorkbook(Columns.HeadersSuspendedUsers, users, FilePath.ListOfEndUsersSuspended, [Sheets.EndUsers]);
+                XLWorkbook workbook = CreateWorkbook(Columns.ColumnHeaders, users, FilePath.ListOfEndUsersSuspended, [Sheets.EndUsers]);
                 _ = workbook.TryGetWorksheet(Sheets.EndUsers, out IXLWorksheet sheet);
                 ApplyFiltersAndSaveReport(workbook);
 
                 foreach (JobResult response in showJobStatusResponse.JobStatus.Results)
                 {
                     User userToAdd = users.FirstOrDefault(user => response.Id == user.Id);
-                    await AddUserToSheet(userToAdd, response.SuspensionStatus, GetCurrentTimeInEst(), sheet, workbook, Columns.HeadersSuspendedUsers);
+                    await AddUserToSheet(userToAdd, response.SuspensionStatus, GetCurrentTimeInEst(), sheet, workbook, Columns.ColumnHeaders);
                 }
             }
             catch (Exception ex)
@@ -629,7 +632,7 @@ namespace ZendeskApiIntegration.App.Services
             List<User> usersFailedToNotify = [];
             users = [.. users.OrderBy(u => u.Id)];
 
-            XLWorkbook workbook = CreateWorkbook(Columns.HeadersNotifiedUsers, users, FilePath.ListOfEndUsersNotified, [Sheets.EndUsers]);
+            XLWorkbook workbook = CreateWorkbook(Columns.ColumnHeaders, users, FilePath.ListOfEndUsersNotified, [Sheets.EndUsers]);
             _ = workbook.TryGetWorksheet(Sheets.EndUsers, out IXLWorksheet sheet);
             ApplyFiltersAndSaveReport(workbook);
 
@@ -651,14 +654,14 @@ namespace ZendeskApiIntegration.App.Services
                         log.LogInformation($"Sending email to {user.Name} ({user.Email})...");
                         client.Send(message);
                         usersNotifiedSuccessfully.Add(user);
-                        await AddUserToSheet(user, JobStatuses.Completed, GetCurrentTimeInEst(), sheet, workbook, Columns.HeadersNotifiedUsers);
+                        await AddUserToSheet(user, JobStatuses.Completed, GetCurrentTimeInEst(), sheet, workbook, Columns.ColumnHeaders);
                         break;
                     }
                     catch (Exception ex)
                     {
                         log.LogInformation($"Failed to send email: {ex.Message}");
                         usersFailedToNotify.Add(user);
-                        await AddUserToSheet(user, JobStatuses.Failed, GetCurrentTimeInEst(), sheet, workbook, Columns.HeadersNotifiedUsers);
+                        await AddUserToSheet(user, JobStatuses.Failed, GetCurrentTimeInEst(), sheet, workbook, Columns.ColumnHeaders);
                     }
 
                     numAttempts++;
@@ -704,27 +707,6 @@ NationsBenefits Zendesk Team
 Note: This email and any attachments may contain information that is confidential and/or privileged and prohibited from disclosure or unauthorized use under applicable law. If you are not the intended recipient, you are hereby notified that any disclosure, copying or distribution or taking of action in reliance upon the contents of this transmission is strictly prohibited. If you have received this email in error, you are instructed to notify the sender by reply email and delete it to the fullest extent possible once you have notified the sender of the error.
 ";
         }
-        private static void SaveWorkbook(List<User> users)
-        {
-            using XLWorkbook workbook = OpenWorkbook(FilePath.ListOfEndUsersSuspended);
-
-            IXLWorksheet worksheet = workbook.AddWorksheet("Users");
-
-            worksheet.Cell(1, 1).Value = Columns.Name;
-            worksheet.Cell(1, 2).Value = Columns.Email;
-            worksheet.Cell(1, 3).Value = Columns.LastLoginAt;
-            worksheet.Cell(1, 4).Value = Columns.Status;
-
-            int row = 2;
-            foreach (User user in users)
-            {
-                worksheet.Cell(row, 1).Value = user.Name;
-                worksheet.Cell(row, 2).Value = user.Email;
-                worksheet.Cell(row, 3).Value = user.LastLoginAt;
-                worksheet.Cell(row, 4).Value = user.Suspended.Value ? "Suspended" : "Active";
-                row++;
-            }
-        }
         private static XLWorkbook OpenWorkbook(string filePath)
         {
             string directoryPath = Path.GetDirectoryName(filePath);
@@ -753,7 +735,7 @@ Note: This email and any attachments may contain information that is confidentia
         {
             bool sheetExists = workbook.TryGetWorksheet(name, out IXLWorksheet worksheet);
 
-            return sheetExists ? worksheet : workbook.AddWorksheet(name, pos);
+            return sheetExists ? worksheet : workbook.Worksheet(1) ?? workbook.AddWorksheet(name, pos);
         }
         private XLWorkbook CreateWorkbook(string[] headers, List<User> users, string filePath, string[] sheets)
         {
@@ -799,7 +781,7 @@ Note: This email and any attachments may contain information that is confidentia
                 worksheet.Cell(row, 2).Value = user.Name;
                 worksheet.Cell(row, 3).Value = user.Email;
                 worksheet.Cell(row, 4).Value = status.ToString();
-                worksheet.Cell(row, 5).Value = time.ToString();
+                worksheet.Cell(row, 5).Value = time.ToString("hh:mm:ss tt");
                 workbook.Save();
             }
             catch (Exception)
@@ -831,8 +813,8 @@ Note: This email and any attachments may contain information that is confidentia
                 SetColumnWidths(worksheet);
 
                 // Apply filters to specific columns
-                //ApplyFilters(worksheet, 14, "Reimbursement");
-                //ApplyFilters(worksheet, 5, "2024");
+                ApplyFilters(worksheet, 5, "Reimbursement");
+                ApplyFilters(worksheet, 5, "2024");
             }
 
             SaveWorkbook(FilePath.ListOfEndUsersNotified, workbook);

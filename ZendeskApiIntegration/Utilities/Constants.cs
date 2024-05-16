@@ -2,11 +2,11 @@
 {
     public static class Constants
     {
-        public const string CohortFilePath = @"C:\Users\Sankalp.Godugu\Downloads\5.6 New Hire List.xlsx";
+        public const string CohortFilePath = @"C:\Users\Sankalp.Godugu\Downloads\Copy of New Hire e-mails 5.13.24.xlsx";
         public static readonly Dictionary<long, string> Groups = new()
         {
             { 22245229281303, "Albertsons Marketplace" },
-            { 18731640267543, "CSS"  },
+            { 18731640267543, "CSS" },
             { 18153132673943, "DEV Data Request" },
             { 17859358579863, "DEV Prod Support" },
             { 18731658773143, "Grievances" },
@@ -62,22 +62,19 @@
         }
         public class Sheets
         {
-            public const string Failed = "FAILED";
-            public const string Success = "SUCCESS";
-            public const string EndUsersSuspended_Failed = "End Users Suspended - FAILED";
-            public const string EndUsersSuspended_Success = "End Users Suspended - SUCCESS";
             public const string EndUsers = "End Users";
         }
         public static class Columns
         {
+            public const string Organization = "Organization";
             public const string Name = "Name";
             public const string Email = "Email";
             public const string LastLoginAt = "Last Logged In";
             public const string Status = "Status";
+            public const string Timestamp = "Timestamp";
             public const string EndUsers = "End Users";
             public const string Cohort = "Cohort";
-            public static readonly string[] HeadersNotifiedUsers = ["Organization", "End User", "Email", "Status", "Timestamp"];
-            public static readonly string[] HeadersSuspendedUsers = ["Organization", "End User", "Email", "Status"];
+            public static readonly string[] ColumnHeaders = ["Organization", "Name", "Email", "Status", "Timestamp"];
         }
         public static readonly Dictionary<string, string> TestUsers = new()
         {
@@ -133,6 +130,7 @@
         }
         public static class UserStatuses
         {
+            public const string Notified = "Notified";
             public const string Suspended = "Suspended";
             public const string Active = "Active";
         }

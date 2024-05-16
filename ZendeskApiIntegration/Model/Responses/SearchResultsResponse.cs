@@ -46,7 +46,7 @@ namespace ZendeskApiIntegration.Model.Responses
         public long? Id { get; set; }
 
         /*[JsonProperty("value")]
-        public required string Value { get; set; }*/
+        public string Value { get; set; }*/
     }
 
     public class Field
