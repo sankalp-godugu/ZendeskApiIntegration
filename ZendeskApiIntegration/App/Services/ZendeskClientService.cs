@@ -610,6 +610,7 @@ namespace ZendeskApiIntegration.App.Services
             message.CC.Add(Emails.ToAddressCC);
             message.CC.Add(Emails.EmailNationsDavidDandridge);
             message.CC.Add(Emails.EmailNationsAustinStephens);
+            message.CC.Add(Emails.EmailNationsSankalpGodugu);
 
             Attachment attachment = new(FilePath.ListOfEndUsers);
             message.Attachments.Add(attachment);

@@ -95,7 +95,7 @@
             public const string EmailTestJudson = "judsonzdtest@nationsbenefits.com";
             public const string EmailTestJudson2 = "sir.j.noel@gmail.com";
 
-            public const string MyEmail = "sankalp.godugu@nationsbenefits.com";
+            public const string EmailNationsSankalpGodugu = "sankalp.godugu@nationsbenefits.com";
             public const string EmailNationsAustinStephens = "astephens@nationsbenefits.com";
             public const string EmailNationsDavidDandridge = "ddandridge@nationsbenefits.com";
 
@@ -129,6 +129,8 @@
         {
             // orgs
             public const long Nations = 16807567180439;
+            public const long Elevance = 18402915425815;
+            public const long Alignment = 19501121271831;
         }
         public static class RecordStatuses
         {

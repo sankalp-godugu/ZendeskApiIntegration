@@ -45,6 +45,8 @@ namespace ZendeskApiIntegration.TriggerUtilities
                            u.Role == Roles.EndUser
                         && u.OrganizationId is not null
                         && u.OrganizationId != Organizations.Nations
+                        && u.OrganizationId != Organizations.Elevance
+                        && u.OrganizationId != Organizations.Alignment
                         && u.LastLoginAt is not null
                         && u.LastLoginAtDt < DateTime.Now.AddMonths(-1)
                         && u.Suspended == false
@@ -116,7 +118,7 @@ namespace ZendeskApiIntegration.TriggerUtilities
         private static List<User> GetTestUsers()
         {
             return [
-                new() { Id = 18139432493847, Email = Emails.MyEmail, Name = Users.MyName, OrganizationId = Organizations.Nations, Suspended = false, LastLoginAt = DateTime.Now.ToString() },
+                new() { Id = 18139432493847, Email = Emails.EmailNationsSankalpGodugu, Name = Users.MyName, OrganizationId = Organizations.Nations, Suspended = false, LastLoginAt = DateTime.Now.ToString() },
                 new User() { Id = 19641229464983, Email = Emails.EmailTestAustinPersonal, Name = Users.TestNameAustin, OrganizationId = Organizations.Nations, OrganizationName = "Nations", Suspended = false, LastLoginAt = DateTime.Now.ToString() },
                 new() { Id = 19613889634711, Email = Emails.EmailTestJudson, Name = Users.TestNameJudson, OrganizationId = Organizations.Nations, OrganizationName = "Nations", Suspended = false, LastLoginAt = DateTime.Now.ToString() }
                 //new() { Id = 19539794011543, Email = Emails.EmailTestJudson2, Name = Users.TestNameJudson, OrganizationId = Organizations.Nations, OrganizationName = "Nations", Suspended = false, LastLoginAt = DateTime.Now.ToString() },

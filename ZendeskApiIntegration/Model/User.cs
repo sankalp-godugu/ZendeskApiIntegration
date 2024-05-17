@@ -48,7 +48,7 @@ public class User
     public string? Locale { get; set; }
 
     [JsonProperty(PropertyName = "organization_id")]
-    public int? OrganizationId { get; set; }
+    public long? OrganizationId { get; set; }
     public string? OrganizationName { get; set; }
 
     public string? Role { get; set; }
