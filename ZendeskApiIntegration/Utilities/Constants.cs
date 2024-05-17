@@ -58,6 +58,25 @@
             return TimeZoneInfo.ConvertTime(dateTime, easternZone);
         }
 
+        public static List<long?> GetOrganizationsToExclude()
+        {
+            return
+            [
+                Organizations.Nations,
+                Organizations.Elevance,
+                Organizations.Alignment,
+                null
+            ];
+        }
+
+        public static List<DateTime?> GetLastLoginFilters()
+        {
+            return
+            [
+
+            ];
+        }
+
         public static class Limits
         {
             public const int PageSize = 1000;

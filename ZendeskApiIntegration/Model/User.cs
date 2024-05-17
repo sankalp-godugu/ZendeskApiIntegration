@@ -154,7 +154,7 @@ public class MediaItem
 
 public class Photo : MediaItem
 {
-    public List<Thumbnail> Thumbnails { get; set; }
+    public List<Thumbnail>? Thumbnails { get; set; }
 }
 
 public class Thumbnail : MediaItem

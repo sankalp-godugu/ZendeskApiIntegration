@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using ZendeskApiIntegration.App.Interfaces;
 using ZendeskApiIntegration.DataLayer.Interfaces;
 using ZendeskApiIntegration.Model;
+using ZendeskApiIntegration.Model.Responses;
 using static ZendeskApiIntegration.App.Services.ZendeskClientService;
 using static ZendeskApiIntegration.Utilities.Constants;
 
@@ -29,34 +30,23 @@ namespace ZendeskApiIntegration.TriggerUtilities
             {
                 await Task.Run(async () =>
                 {
-                    string appConnectionString = config["DataBase:APPConnectionString"] ?? Environment.GetEnvironmentVariable("DataBase:ConnectionString");
-
                     log.LogInformation($"C# Timer trigger function executed at: {DateTime.Now}");
                     log.LogInformation("********* Member PD Orders => Zendesk End User Suspension Automation **********");
 
-                    Filter allFilter = new()
-                    {
-                        Role = Roles.EndUser,
-                        Type = Types.User
-                    };
-                    List<User> allEndUsers = await zendeskClientService.GetAllEndUsers(allFilter, log);
+                    List<User> allEndUsers = await zendeskClientService.GetAllEndUsers(Roles.EndUser, log);
                     List<User> endUsersNotifiedLastWeek = zendeskClientService.GetEndUsersFromLastReport(allEndUsers, log);
                     List<User> inactiveEndUsers = allEndUsers.Where(u =>
                            u.Role == Roles.EndUser
-                        && u.OrganizationId is not null
-                        && u.OrganizationId != Organizations.Nations
-                        && u.OrganizationId != Organizations.Elevance
-                        && u.OrganizationId != Organizations.Alignment
+                        && !GetOrganizationsToExclude().Contains(u.OrganizationId.Value)
                         && u.LastLoginAt is not null
                         && u.LastLoginAtDt < DateTime.Now.AddMonths(-1)
                         && u.Suspended == false
                     ).ToList();
                     await zendeskClientService.GetUserOrganizations(inactiveEndUsers, log);
 
-                    var inactiveUsers = allEndUsers.Where(u =>
+                    List<User> inactiveUsers = allEndUsers.Where(u =>
                            u.Role == Roles.EndUser
-                        && u.OrganizationId is not null
-                        && u.OrganizationId != Organizations.Nations
+                        && !GetOrganizationsToExclude().Contains(u.OrganizationId.Value)
                         && u.LastLoginAt is not null
                         && u.LastLoginAtDt < DateTime.Now.AddMonths(-1)
                     ).ToList();
@@ -70,17 +60,11 @@ namespace ZendeskApiIntegration.TriggerUtilities
                     endUsersToNotify = hasUsersToNotify ? endUsersToNotify : [];
                     await zendeskClientService.BuildReport(endUsersLoggedInSinceLastWeek, UserStatuses.LoggedBackIn, log);
 
-                    //List<User> inactiveEndUsersToSuspend = GetTestUsers();
-                    //List<User> endUsersToNotify = GetTestUsers();
-                    //var temp = inactiveEndUsersToSuspend.Intersect(endUsersToNotify, new UserEmailEqualityComparer());
-                    //var temp2 = inactiveEndUsersToSuspend.Intersect(endUsersToNotify, new UserEmailEqualityComparer());
-
-                    await zendeskClientService.BuildReport(inactiveEndUsersToSuspend, UserStatuses.Suspended, log);
-                    //ShowJobStatusResponse suspendUsersResponse = await zendeskClientService.SuspendEndUsers(true, inactiveEndUsersToSuspend, log);
+                    ShowJobStatusResponse suspendUsersResponse = await zendeskClientService.SuspendEndUsers(true, inactiveEndUsersToSuspend, log);
                     int notifyClientServicesResponse = await zendeskClientService.NotifyClientServices(log);
                     int sendEmailMultipleResult = await zendeskClientService.NotifyEndUsers(endUsersToNotify, log);
 
-                    log?.LogInformation("********* Member PD Orders => Zendesk End User Suspension Automation Finished **********");
+                    log?.LogInformation("********* Zendesk End User Suspension Automation Finished **********");
                 });
 
                 return new OkObjectResult("Task of processing PD Orders in Zendesk has been allocated to azure function and see logs for more information about its progress...");

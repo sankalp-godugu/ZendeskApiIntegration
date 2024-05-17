@@ -17,7 +17,7 @@ namespace ZendeskApiIntegration.App.Interfaces
         /// <returns>Returns the list of contacts from Zendesk.</returns>
         public Task CreateGroupMemberships(ILogger logger);
 
-        public Task<List<User>> GetAllEndUsers(Filter filter, ILogger logger);
+        public Task<List<User>> GetAllEndUsers(string role, ILogger logger);
         public List<User> GetEndUsersFromLastReport(List<User> users, ILogger logger);
         /// <summary>
         /// Suspends a list of users

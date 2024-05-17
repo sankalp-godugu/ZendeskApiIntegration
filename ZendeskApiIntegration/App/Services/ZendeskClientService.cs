@@ -14,7 +14,6 @@ using ZendeskApiIntegration.Model.Responses;
 using ZendeskApiIntegration.Utilities;
 using static ZendeskApiIntegration.Utilities.Constants;
 using Columns = ZendeskApiIntegration.Utilities.Constants.Columns;
-using Filter = ZendeskApiIntegration.Model.Filter;
 using Sheets = ZendeskApiIntegration.Utilities.Constants.Sheets;
 using User = ZendeskApiIntegration.Model.User;
 
@@ -425,9 +424,9 @@ namespace ZendeskApiIntegration.App.Services
             }
             return [];
         }
-        public async Task<List<User>> GetAllEndUsers(Filter filter, ILogger logger)
+        public async Task<List<User>> GetAllEndUsers(string role, ILogger logger)
         {
-            List<User> endUsers = await GetUsers($"type:{filter.Type} role:{filter.Role}", logger);
+            List<User> endUsers = await GetUsers($"role:{role}", logger);
             return endUsers;
         }
         public List<User> GetEndUsersFromLastReport(List<User> users, ILogger logger)
@@ -440,7 +439,7 @@ namespace ZendeskApiIntegration.App.Services
             {
                 HttpClient client = httpClientFactory.CreateClient("ZD");
                 // CONSTRUCT INPUT FROM API RESPONSE
-                var orgIds = string.Empty;
+                string orgIds = string.Empty;
                 foreach (long? orgId in users.Select(u => u.OrganizationId))
                 {
                     orgIds += orgId + ",";
@@ -460,12 +459,12 @@ namespace ZendeskApiIntegration.App.Services
                     if (response.IsSuccessStatusCode)
                     {
                         string result = await response.Content.ReadAsStringAsync();
-                        var temp = JsonConvert.DeserializeObject<ShowOrganizationsResponse>(result);
+                        ShowOrganizationsResponse? temp = JsonConvert.DeserializeObject<ShowOrganizationsResponse>(result);
                         showOrganizationsResponse.Organizations.AddRange(temp.Organizations);
                     }
                 }
 
-                foreach (var user in users)
+                foreach (User user in users)
                 {
                     user.OrganizationName = user.OrganizationName is null ? showOrganizationsResponse?.Organizations?.FirstOrDefault(o => o.Id == user.OrganizationId)?.Name : user.OrganizationName;
                 }
@@ -530,7 +529,7 @@ namespace ZendeskApiIntegration.App.Services
                     } while (numAttempts < Limits.MaxAttempts && !response.IsSuccessStatusCode);
                 }
 
-                await BuildReportFromJobStatus(showJobStatusResponse, users, log);
+                BuildReportFromJobStatus(showJobStatusResponse, users, log);
             }
             catch (Exception ex)
             {
@@ -539,7 +538,7 @@ namespace ZendeskApiIntegration.App.Services
 
             return showJobStatusResponse;
         }
-        public async Task BuildReport(List<User> users, string status, ILogger log)
+        public Task BuildReport(List<User> users, string status, ILogger log)
         {
             try
             {
@@ -550,15 +549,16 @@ namespace ZendeskApiIntegration.App.Services
 
                 foreach (User user in users)
                 {
-                    await AddUserToSheet(user, status, sheet, workbook, Columns.ColumnHeaders);
+                    AddUserToSheet(user, status, sheet, workbook, Columns.ColumnHeaders);
                 }
             }
             catch (Exception ex)
             {
                 log.LogInformation("Error building report: " + ex.Message);
             }
+            return Task.FromResult(0);
         }
-        private async Task BuildReportFromJobStatus(ShowJobStatusResponse showJobStatusResponse, List<User> users, ILogger log)
+        private void BuildReportFromJobStatus(ShowJobStatusResponse showJobStatusResponse, List<User> users, ILogger log)
         {
             try
             {
@@ -569,7 +569,10 @@ namespace ZendeskApiIntegration.App.Services
                 foreach (JobResult response in showJobStatusResponse.JobStatus.Results)
                 {
                     User? userToAdd = users.FirstOrDefault(user => response.Id == user.Id);
-                    if (userToAdd is not null) await AddUserToSheet(userToAdd, response.SuspensionStatus, sheet, workbook, Columns.ColumnHeaders);
+                    if (userToAdd is not null)
+                    {
+                        AddUserToSheet(userToAdd, response.SuspensionStatus, sheet, workbook, Columns.ColumnHeaders);
+                    }
                 }
             }
             catch (Exception ex)
@@ -583,7 +586,7 @@ namespace ZendeskApiIntegration.App.Services
         /// <param name="users">list of inactive non-Nations end users that are part of an organization</param>
         /// <param name="log"></param>
         /// <returns>0 if success, -1 if fail</returns>
-        public async Task<int> NotifyClientServices(ILogger log)
+        public Task<int> NotifyClientServices(ILogger log)
         {
             string smtpServer = Environment.GetEnvironmentVariable("smtpServer");
             int smtpPort = int.Parse(Environment.GetEnvironmentVariable("smtpPort"));
@@ -637,7 +640,7 @@ namespace ZendeskApiIntegration.App.Services
                 Thread.Sleep(Limits.SleepTime);
             }
 
-            return 0;
+            return Task.FromResult(0);
         }
         /// <summary>
         /// sends an email to each non-Nations end user part of an org that is at risk of suspension due to inactivity
@@ -652,7 +655,7 @@ namespace ZendeskApiIntegration.App.Services
         /// <param name="users">list of inactive end users from this week's report</param>
         /// <param name="log"></param>
         /// <returns></returns>
-        public async Task<int> NotifyEndUsers(List<User> users, ILogger log)
+        public Task<int> NotifyEndUsers(List<User> users, ILogger log)
         {
             string smtpServer = Environment.GetEnvironmentVariable("smtpServer");
             int smtpPort = int.Parse(Environment.GetEnvironmentVariable("smtpPort"));
@@ -695,14 +698,14 @@ namespace ZendeskApiIntegration.App.Services
                         log.LogInformation($"Sending email to {user.Name} ({user.Email})...");
                         client.Send(message);
                         usersNotifiedSuccessfully.Add(user);
-                        await AddUserToSheet(user, EmailStatuses.Notified, sheet, workbook, Columns.ColumnHeaders);
+                        AddUserToSheet(user, EmailStatuses.Notified, sheet, workbook, Columns.ColumnHeaders);
                         break;
                     }
                     catch (Exception ex)
                     {
                         log.LogInformation($"Failed to send email: {ex.Message}");
                         usersFailedToNotify.Add(user);
-                        await AddUserToSheet(user, EmailStatuses.FailedToNotify, sheet, workbook, Columns.ColumnHeaders);
+                        AddUserToSheet(user, EmailStatuses.FailedToNotify, sheet, workbook, Columns.ColumnHeaders);
                     }
 
                     numAttempts++;
@@ -710,7 +713,7 @@ namespace ZendeskApiIntegration.App.Services
                 Thread.Sleep(Limits.SleepTime);
             }
 
-            return 0;
+            return Task.FromResult(0);
         }
         private static string GetBodyEndUser(string name, string loginBy)
         {
@@ -803,7 +806,7 @@ Note: This email and any attachments may contain information that is confidentia
                 worksheet.Cell(1, i + 1).Value = headers[i];
             }
         }
-        private async Task AddUserToSheet(User user, string status, IXLWorksheet worksheet, XLWorkbook workbook, string[] headers)
+        private void AddUserToSheet(User user, string status, IXLWorksheet worksheet, XLWorkbook workbook, string[] headers)
         {
             try
             {
@@ -821,9 +824,9 @@ Note: This email and any attachments may contain information that is confidentia
                 worksheet.Cell(row, 6).Value = GetCurrentTimeInEst().ToString("MM/dd/yyyy hh:mm:ss tt");
                 workbook.Save();
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                
+
             }
         }
         private static void ApplyFiltersAndSaveReport(XLWorkbook workbook, string filePath)
@@ -923,12 +926,7 @@ Note: This email and any attachments may contain information that is confidentia
                 column.Width = width;
             }
         }
-        private static void ApplyFilters(IXLWorksheet worksheet, int columnIndex, string filterCriteria)
-        {
-
-            _ = worksheet.SetAutoFilter().Column(columnIndex).AddFilter(filterCriteria);
-        }
-        private static List<User> ConvertWorkbookToList(string filePath, List<User> users = null, string sheetName = Columns.EndUsers)
+        private static List<User> ConvertWorkbookToList(string filePath, List<User>? users = null, string sheetName = Columns.EndUsers)
         {
             List<User> userList = [];
 
@@ -948,9 +946,9 @@ Note: This email and any attachments may contain information that is confidentia
             for (int row = 2; row <= lastRowUsed; row++)
             {
                 User user = new();
-                
 
-                for (int i=0; i < headers.Count; i++)
+
+                for (int i = 0; i < headers.Count; i++)
                 {
                     IXLCell cell = worksheet.Cell(row, i + 1);
                     switch (i)
@@ -978,6 +976,7 @@ Note: This email and any attachments may contain information that is confidentia
 
             return userList;
         }
+
         public class UserEmailEqualityComparer : IEqualityComparer<User>
         {
             public bool Equals(User x, User y)
