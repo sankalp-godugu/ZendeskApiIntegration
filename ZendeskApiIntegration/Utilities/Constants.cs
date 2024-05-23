@@ -26,7 +26,7 @@
 
             //public static readonly string ListOfEndUsersSuspended = @$"C:\Users\Sankalp.Godugu\OneDrive - NationsBenefits\Documents\Business\Zendesk Integration\EndUserSuspension\{GetCurrentDateInEst()}\ListOfEndUsersSuspended_{GetCurrentDateInEst()}.xlsx";
 
-            public static readonly string ListOfEndUsersNotifiedLastWeek = @$"C:\Users\Sankalp.Godugu\OneDrive - NationsBenefits\Documents\Business\Zendesk Integration\EndUserSuspension\{GetDate7DaysAgoInEst()}\ListOfEndUsersNotified_{GetDate7DaysAgoInEst()}.xlsx";
+            public static readonly string ListOfEndUsersNotifiedLastWeek = @$"C:\Users\Sankalp.Godugu\OneDrive - NationsBenefits\Documents\Business\Zendesk Integration\EndUserSuspension\{GetDate7DaysAgoInEst()}\ListOfEndUsers_{GetDate7DaysAgoInEst()}.xlsx";
 
             //public static readonly string ListOfEndUsersSuspendedLastWeek = @$"C:\Users\Sankalp.Godugu\OneDrive - NationsBenefits\Documents\Business\Zendesk Integration\EndUserSuspension\{GetDate7DaysAgoInEst()}\ListOfEndUsersSuspended_{GetDate7DaysAgoInEst()}.xlsx";
         }
@@ -58,14 +58,13 @@
             return TimeZoneInfo.ConvertTime(dateTime, easternZone);
         }
 
-        public static List<long?> GetOrganizationsToExclude()
+        public static List<long> GetOrganizationsToExclude()
         {
             return
             [
                 Organizations.Nations,
                 Organizations.Elevance,
-                Organizations.Alignment,
-                null
+                Organizations.Alignment
             ];
         }
 

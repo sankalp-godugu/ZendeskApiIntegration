@@ -7,6 +7,6 @@
 
     public class ListSearchResultsResponse
     {
-        public required List<Result> Results { get; set; }
+        public List<Result>? Results { get; set; }
     }
 }

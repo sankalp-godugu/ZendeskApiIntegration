@@ -429,9 +429,9 @@ namespace ZendeskApiIntegration.App.Services
             List<User> endUsers = await GetUsers($"role:{role}", logger);
             return endUsers;
         }
-        public List<User> GetEndUsersFromLastReport(List<User> users, ILogger logger)
+        public List<User> GetEndUsersNotifiedFromLastReport(List<User> users, ILogger logger)
         {
-            return ConvertWorkbookToList(FilePath.ListOfEndUsersNotifiedLastWeek, users);
+            return ConvertWorkbookToList(FilePath.ListOfEndUsersNotifiedLastWeek, users).Where(u => u.Status == EmailStatuses.Notified).ToList();
         }
         public async Task GetUserOrganizations(List<User> users, ILogger logger)
         {
@@ -544,7 +544,7 @@ namespace ZendeskApiIntegration.App.Services
             {
                 using XLWorkbook workbook = CreateWorkbook(Columns.ColumnHeaders, users, FilePath.ListOfEndUsers, [Sheets.EndUsers]);
                 IXLWorksheet sheet = OpenWorksheet(workbook, Sheets.EndUsers);
-                //ClearWorksheet(sheet);
+                ClearWorksheet(sheet);
                 ApplyFiltersAndSaveReport(workbook, FilePath.ListOfEndUsers);
 
                 foreach (User user in users)
@@ -946,8 +946,6 @@ Note: This email and any attachments may contain information that is confidentia
             for (int row = 2; row <= lastRowUsed; row++)
             {
                 User user = new();
-
-
                 for (int i = 0; i < headers.Count; i++)
                 {
                     IXLCell cell = worksheet.Cell(row, i + 1);
@@ -961,6 +959,15 @@ Note: This email and any attachments may contain information that is confidentia
                             break;
                         case 2:
                             user.Email = cell.Value.ToString();
+                            break;
+                        case 3:
+                            user.LastLoginAt = cell.Value.ToString();
+                            break;
+                        case 4:
+                            user.Status = cell.Value.ToString();
+                            break;
+                        case 5:
+                            user.Timestamp = cell.Value.ToString();
                             break;
                         default:
                             // Handle if there are more columns than expected

@@ -34,35 +34,26 @@ namespace ZendeskApiIntegration.TriggerUtilities
                     log.LogInformation("********* Member PD Orders => Zendesk End User Suspension Automation **********");
 
                     List<User> allEndUsers = await zendeskClientService.GetAllEndUsers(Roles.EndUser, log);
-                    List<User> endUsersNotifiedLastWeek = zendeskClientService.GetEndUsersFromLastReport(allEndUsers, log);
+                    List<User> endUsersNotifiedLastWeek = zendeskClientService.GetEndUsersNotifiedFromLastReport(allEndUsers, log);
                     List<User> inactiveEndUsers = allEndUsers.Where(u =>
                            u.Role == Roles.EndUser
-                        && !GetOrganizationsToExclude().Contains(u.OrganizationId.Value)
+                        && u.OrganizationId != null && !GetOrganizationsToExclude().Contains(u.OrganizationId.Value)
                         && u.LastLoginAt is not null
                         && u.LastLoginAtDt < DateTime.Now.AddMonths(-1)
                         && u.Suspended == false
                     ).ToList();
                     await zendeskClientService.GetUserOrganizations(inactiveEndUsers, log);
 
-                    List<User> inactiveUsers = allEndUsers.Where(u =>
-                           u.Role == Roles.EndUser
-                        && !GetOrganizationsToExclude().Contains(u.OrganizationId.Value)
-                        && u.LastLoginAt is not null
-                        && u.LastLoginAtDt < DateTime.Now.AddMonths(-1)
-                    ).ToList();
-                    await zendeskClientService.GetUserOrganizations(inactiveUsers, log);
-
-                    List<User> endUsersLoggedInSinceLastWeek = endUsersNotifiedLastWeek.Except(inactiveUsers, new UserEmailEqualityComparer()).ToList();
+                    List<User> endUsersLoggedInSinceLastWeek = endUsersNotifiedLastWeek.Except(inactiveEndUsers, new UserEmailEqualityComparer()).ToList();
                     List<User> inactiveEndUsersToSuspend = endUsersNotifiedLastWeek.Except(endUsersLoggedInSinceLastWeek, new UserEmailEqualityComparer()).ToList();
 
                     List<User> endUsersToNotify = inactiveEndUsers.Except(inactiveEndUsersToSuspend, new UserEmailEqualityComparer()).ToList();
-                    bool hasUsersToNotify = endUsersToNotify.Count > 0;
-                    endUsersToNotify = hasUsersToNotify ? endUsersToNotify : [];
+                    endUsersToNotify = endUsersToNotify.Count > 0 ? endUsersToNotify : [];
                     await zendeskClientService.BuildReport(endUsersLoggedInSinceLastWeek, UserStatuses.LoggedBackIn, log);
 
                     ShowJobStatusResponse suspendUsersResponse = await zendeskClientService.SuspendEndUsers(true, inactiveEndUsersToSuspend, log);
-                    int notifyClientServicesResponse = await zendeskClientService.NotifyClientServices(log);
                     int sendEmailMultipleResult = await zendeskClientService.NotifyEndUsers(endUsersToNotify, log);
+                    int notifyClientServicesResponse = await zendeskClientService.NotifyClientServices(log);
 
                     log?.LogInformation("********* Zendesk End User Suspension Automation Finished **********");
                 });

@@ -116,6 +116,8 @@ public class User
     public DateTime? LastLoginAtDt => DateTime.TryParse(LastLoginAt, out DateTime LastLoginAtDt) ? LastLoginAtDt : null;
     public string? SuspensionStatus => Suspended == true ? "Suspended" : "Active";
     public bool ShouldSuspend => LastLoginAtDt > DateTime.Now.AddMonths(-1);
+    public string Status { get; set; }
+    public string Timestamp { get; set; }
 }
 
 public class UserFields
