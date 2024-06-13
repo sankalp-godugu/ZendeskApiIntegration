@@ -68,6 +68,14 @@
             ];
         }
 
+        public static List<string> GetEmailsToExclude()
+        {
+            return
+            [
+                Emails.BcbsriVendorEligibility
+            ];
+        }
+
         public static List<DateTime?> GetLastLoginFilters()
         {
             return
@@ -123,6 +131,8 @@
             public const string FromAddress = @"donotreply_zendesk@nationsbenefits.com";
             public const string ToAddress = @"cs@nationsbenefits.com";
             public const string ToAddressCC = @"businessengineering@nationsbenefits.com";
+
+            public const string BcbsriVendorEligibility = @"bcbsri_vendoreligibility@bcbsri.org";
         }
         public static class Users
         {

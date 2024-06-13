@@ -37,7 +37,8 @@ namespace ZendeskApiIntegration.TriggerUtilities
                     List<User> endUsersNotifiedLastWeek = zendeskClientService.GetEndUsersNotifiedFromLastReport(allEndUsers, log);
                     List<User> inactiveEndUsers = allEndUsers.Where(u =>
                            u.Role == Roles.EndUser
-                        && u.OrganizationId != null && !GetOrganizationsToExclude().Contains(u.OrganizationId.Value)
+                        && u.OrganizationId is not null && !GetOrganizationsToExclude().Contains(u.OrganizationId.Value)
+                        && u.Email is not null && !GetEmailsToExclude().Contains(u.Email)
                         && u.LastLoginAt is not null
                         && u.LastLoginAtDt < DateTime.Now.AddMonths(-1)
                         && u.Suspended == false
