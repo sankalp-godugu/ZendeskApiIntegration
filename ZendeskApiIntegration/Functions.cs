@@ -11,13 +11,13 @@ namespace ZendeskApiIntegration
 {
     public class Functions(IDataLayer dataLayer, IConfiguration config, IZendeskClientService zendeskClientService, ILogger<Functions> log)
     {
-        //[Function("BulkCreateGroupMemberships")]
-        //public async Task<IActionResult> BulkCreateGroupMemberships([HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequest req)
-        //{
-        //    log.LogInformation("C# HTTP trigger function processed a request.");
-        //    _ = await ZendeskApiUtilities.ProcessBulkGroupAssignment(dataLayer, config, zendeskClientService, log);
-        //    return new OkObjectResult("Welcome to Azure Functions!");
-        //}
+        [Function("BulkCreateGroupMemberships")]
+        public async Task<IActionResult> BulkCreateGroupMemberships([HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequest req)
+        {
+            log.LogInformation("C# HTTP trigger function processed a request.");
+            _ = await ZendeskApiUtilities.ProcessBulkGroupAssignment(dataLayer, config, zendeskClientService, log);
+            return new OkObjectResult("Welcome to Azure Functions!");
+        }
 
         //[Function("BulkDeleteTickets")]
         //public async Task<IActionResult> BulkDeleteTickets([TimerTrigger("*/5 * * * *", RunOnStartup = true, UseMonitor = true)] TimerInfo timer)
@@ -76,8 +76,8 @@ namespace ZendeskApiIntegration
 
         [Function(nameof(NotifyAndSuspendInactiveEndUsers))]
         //public async Task<IActionResult> NotifyInactiveEndUsers([ActivityTrigger] object input)
-        public async Task<IActionResult> NotifyAndSuspendInactiveEndUsers([HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequest req)
         //public async Task<IActionResult> NotifyInactiveEndUsers([TimerTrigger("0 0 9 * * WED", RunOnStartup = true, UseMonitor = true)] TimerInfo timer)
+        public async Task<IActionResult> NotifyAndSuspendInactiveEndUsers([HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequest req)
         {
             _ = await ZendeskApiUtilities.NotifyAndSuspendInactiveEndUsers(dataLayer, config, zendeskClientService, log);
             return new OkObjectResult("Welcome to Azure Functions!");

@@ -290,7 +290,8 @@ namespace ZendeskApiIntegration.App.Services
         private static List<User> GetUsersFromFile(string filePath, int sheetPos = 1)
         {
             using XLWorkbook workbook = OpenWorkbook(filePath);
-            IXLWorksheet worksheet = OpenWorksheet(workbook, Columns.Cohort, sheetPos); // Assuming the data is in the first worksheet
+            //IXLWorksheet worksheet = OpenWorksheetByPos(workbook, sheetPos); // Assuming the data is in the first worksheet
+            IXLWorksheet worksheet = OpenWorksheet(workbook, "cohort", 1);
 
             // Find the header row
             List<string> columns = worksheet.Row(1).CellsUsed().Select(c => c.Value.ToString()).ToList();
@@ -309,6 +310,18 @@ namespace ZendeskApiIntegration.App.Services
             }
 
             return users;
+        }
+
+        private static IXLWorksheet OpenWorksheetByPos(IXLWorkbook workbook, int sheetPos)
+        {
+            // Ensure the sheet index is within the valid range
+            if (sheetPos < 0 || sheetPos > workbook.Worksheets.Count)
+            {
+                throw new ArgumentOutOfRangeException(nameof(sheetPos), "Sheet index is out of range.");
+            }
+
+            // Return the worksheet at the specified index
+            return workbook.Worksheet(sheetPos); // Note: Worksheet method is 1-based index
         }
         private static string ConstructFullQuery(List<User> users)
         {
@@ -431,7 +444,7 @@ namespace ZendeskApiIntegration.App.Services
         }
         public List<User> GetEndUsersNotifiedFromLastReport(List<User> users, ILogger logger)
         {
-            return ConvertWorkbookToList(FilePath.ListOfEndUsersNotifiedLastWeek, users).Where(u => u.Status == EmailStatuses.Notified).ToList();
+            return ConvertWorkbookToList(FilePath.ListOfEndUsersLastWeek, users).Where(u => u.Status == EmailStatuses.Notified).ToList();
         }
         public async Task GetUserOrganizations(List<User> users, ILogger logger)
         {

@@ -2,7 +2,7 @@
 {
     public static class Constants
     {
-        public const string CohortFilePath = @"C:\Users\Sankalp.Godugu\Downloads\Copy of New Hire e-mails 5.13.24.xlsx";
+        public const string CohortFilePath = @"C:\Users\Sankalp.Godugu\Downloads\Zendesk MEA Additions 6-21-24.xlsx";
         public static readonly Dictionary<long, string> Groups = new()
         {
             { 22245229281303, "Albertsons Marketplace" },
@@ -24,11 +24,7 @@
         {
             public static readonly string ListOfEndUsers = @$"C:\Users\Sankalp.Godugu\OneDrive - NationsBenefits\Documents\Business\Zendesk Integration\EndUserSuspension\{GetCurrentDateInEst()}\ListOfEndUsers_{GetCurrentDateInEst()}.xlsx";
 
-            //public static readonly string ListOfEndUsersSuspended = @$"C:\Users\Sankalp.Godugu\OneDrive - NationsBenefits\Documents\Business\Zendesk Integration\EndUserSuspension\{GetCurrentDateInEst()}\ListOfEndUsersSuspended_{GetCurrentDateInEst()}.xlsx";
-
-            public static readonly string ListOfEndUsersNotifiedLastWeek = @$"C:\Users\Sankalp.Godugu\OneDrive - NationsBenefits\Documents\Business\Zendesk Integration\EndUserSuspension\{GetDate7DaysAgoInEst()}\ListOfEndUsers_{GetDate7DaysAgoInEst()}.xlsx";
-
-            //public static readonly string ListOfEndUsersSuspendedLastWeek = @$"C:\Users\Sankalp.Godugu\OneDrive - NationsBenefits\Documents\Business\Zendesk Integration\EndUserSuspension\{GetDate7DaysAgoInEst()}\ListOfEndUsersSuspended_{GetDate7DaysAgoInEst()}.xlsx";
+            public static readonly string ListOfEndUsersLastWeek = @$"C:\Users\Sankalp.Godugu\OneDrive - NationsBenefits\Documents\Business\Zendesk Integration\EndUserSuspension\{GetDate7DaysAgoInEst()}\ListOfEndUsers_{GetDate7DaysAgoInEst()}.xlsx";
         }
 
         public static string GetCurrentDateInEst()
