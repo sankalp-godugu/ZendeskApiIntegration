@@ -36,7 +36,8 @@ namespace ZendeskApiIntegration.App.Interfaces
         /// </summary>
         /// <param name="logger">Logger.<see cref="ILogger"/></param>
         /// <returns>Returns the list of contacts from Zendesk.</returns>
-        public Task DeleteTickets(ILogger logger);
+        public Task DeleteTicketsBySearchQuery(ILogger logger);
+        public Task DeleteTicketsById(ILogger logger);
         public Task<List<Ticket>> GetTicketsWithIncorrectAddress(ILogger logger);
         public Task<int> NotifyEndUsers(List<User> users, ILogger log);
         public Task<int> NotifyClientServices(ILogger log);

@@ -11,21 +11,21 @@ namespace ZendeskApiIntegration
 {
     public class Functions(IDataLayer dataLayer, IConfiguration config, IZendeskClientService zendeskClientService, ILogger<Functions> log)
     {
-        [Function("BulkCreateGroupMemberships")]
-        public async Task<IActionResult> BulkCreateGroupMemberships([HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequest req)
-        {
-            log.LogInformation("C# HTTP trigger function processed a request.");
-            _ = await ZendeskApiUtilities.ProcessBulkGroupAssignment(dataLayer, config, zendeskClientService, log);
-            return new OkObjectResult("Welcome to Azure Functions!");
-        }
-
-        //[Function("BulkDeleteTickets")]
-        //public async Task<IActionResult> BulkDeleteTickets([TimerTrigger("*/5 * * * *", RunOnStartup = true, UseMonitor = true)] TimerInfo timer)
+        //[Function("BulkCreateGroupMemberships")]
+        //public async Task<IActionResult> BulkCreateGroupMemberships([HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequest req)
         //{
         //    log.LogInformation("C# HTTP trigger function processed a request.");
-        //    _ = await ZendeskApiUtilities.ProcessZendeskTask(dataLayer, config, zendeskClientService, log);
+        //    _ = await ZendeskApiUtilities.ProcessBulkGroupAssignment(dataLayer, config, zendeskClientService, log);
         //    return new OkObjectResult("Welcome to Azure Functions!");
         //}
+
+        [Function("BulkDeleteTickets")]
+        public async Task<IActionResult> BulkDeleteTickets([HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequest req)
+        {
+            log.LogInformation("C# HTTP trigger function processed a request.");
+            _ = await ZendeskApiUtilities.ProcessBulkDeletion(dataLayer, config, zendeskClientService, log);
+            return new OkObjectResult("Welcome to Azure Functions!");
+        }
 
         //[Function("BulkMoveTickets")]
         //public async Task<IActionResult> BulkMoveTickets([TimerTrigger("*/5 * * * *", RunOnStartup = true, UseMonitor = true)] TimerInfo timer)

@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Authentication.BearerToken;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using OfficeOpenXml;
+using System;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Mail;
@@ -58,7 +60,71 @@ namespace ZendeskApiIntegration.App.Services
             //In a real-world application, we should retrieve the token from a cache service.
             return Environment.GetEnvironmentVariable("token");
         }
-        public async Task DeleteTickets(ILogger logger)
+
+        public async Task DeleteTicketsById(ILogger logger)
+        {
+            try
+            {
+                (string, int) ticketIds = GetListOfIdsFromExcel();
+                PeriodicTimer timer = new(TimeSpan.FromSeconds(1));
+                HttpClient client = httpClientFactory.CreateClient("ZD");
+
+                var idsArray = ticketIds.Item1.Split(',');
+
+                int numLoops = (int)Math.Ceiling((double)ticketIds.Item2 / 100);
+
+                for (int i=0; i<numLoops; i++)
+                {
+                    var currentChunk = idsArray.Skip(i * 100).Take(100);
+                    string idsChunk = string.Join(",", currentChunk);
+                    string destroyQuery = new("tickets/destroy_many?ids=" + idsChunk);
+                    HttpResponseMessage response = await client.DeleteAsync(destroyQuery);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        string result = await response.Content.ReadAsStringAsync();
+                    }
+
+                    // Wait for the timer
+                    await timer.WaitForNextTickAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogInformation("Error deleting tickets: " + ex.Message);
+            }
+        }
+
+        private static (string, int) GetListOfIdsFromExcel()
+        {
+            string filePath = @"C:\Users\Sankalp.Godugu\OneDrive - NationsBenefits\Documents\Business\Debugging\Austin\Admin Portal MCO Tickets.xlsx";
+            string sheetName = "Tickets to Delete"; // Replace with your sheet name
+            int columnIndex = 1; // Column index (1-based) to read
+
+            // Load the Excel file
+            ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+            using var package = new ExcelPackage(new FileInfo(filePath));
+
+            // Get the worksheet
+            ExcelWorksheet worksheet = package.Workbook.Worksheets[sheetName];
+
+            // Determine the number of rows used in the worksheet
+            int rowCount = worksheet.Dimension.Rows;
+
+            // Read column values into a string array
+            string ticketIds = "";
+            for (int row = 1; row <= rowCount; row++)
+            {
+                ticketIds += worksheet.Cells[row, columnIndex].Value?.ToString() + ",";
+                if (row >= rowCount)
+                {
+                    ticketIds = ticketIds.TrimEnd(',');
+                }
+            }
+
+            return (ticketIds, rowCount);
+        }
+
+        public async Task DeleteTicketsBySearchQuery(ILogger logger)
         {
             string searchQuery = "search/count?query=type:ticket group:18731646602263 requester:MEPtoZendesk@nationsbenefits.com created<=2023-12-14 -status:solved";
             PeriodicTimer timer = new(TimeSpan.FromSeconds(1));
