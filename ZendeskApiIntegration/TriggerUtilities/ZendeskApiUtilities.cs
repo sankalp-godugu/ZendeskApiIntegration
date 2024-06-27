@@ -114,6 +114,29 @@ namespace ZendeskApiIntegration.TriggerUtilities
             }
         }
 
+        public static async Task<IActionResult> ProcessBulkRestoration(IDataLayer dataLayer, IConfiguration config, IZendeskClientService zendeskClientService, ILogger log)
+        {
+            try
+            {
+                await Task.Run(async () =>
+                {
+                    log.LogInformation($"C# Timer trigger function executed at: {DateTime.Now}");
+                    log?.LogInformation("********* Member PD Orders => Zendesk Bulk Delete Tickets **********");
+
+                    await zendeskClientService.RestoreTicketsById(log);
+
+                    return;
+                });
+
+                return null;
+            }
+            catch (Exception ex)
+            {
+                log?.LogError($"Failed with an exception with message: {ex.Message}");
+                return new BadRequestObjectResult(ex.Message);
+            }
+        }
+
         private static List<User> GetTestUsers()
         {
             return [

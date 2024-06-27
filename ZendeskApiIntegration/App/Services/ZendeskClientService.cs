@@ -3,8 +3,8 @@ using Microsoft.AspNetCore.Authentication.BearerToken;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using OfficeOpenXml;
-using System;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Mail;
@@ -66,7 +66,7 @@ namespace ZendeskApiIntegration.App.Services
             try
             {
                 (string, int) ticketIds = GetListOfIdsFromExcel();
-                PeriodicTimer timer = new(TimeSpan.FromSeconds(1));
+                PeriodicTimer timer = new(TimeSpan.FromSeconds(5));
                 HttpClient client = httpClientFactory.CreateClient("ZD");
 
                 var idsArray = ticketIds.Item1.Split(',');
@@ -82,10 +82,54 @@ namespace ZendeskApiIntegration.App.Services
                     if (response.IsSuccessStatusCode)
                     {
                         string result = await response.Content.ReadAsStringAsync();
+                        JObject jsonResponse = JObject.Parse(result);
+                        do
+                        {
+                            await timer.WaitForNextTickAsync();
+                            response = await client.GetAsync($"job_statuses/{jsonResponse["job_status"]["id"]}");
+                            if (response.IsSuccessStatusCode)
+                            {
+                                result = await response.Content.ReadAsStringAsync();
+                                jsonResponse = JObject.Parse(result);
+                            }
+                        } while (jsonResponse["job_status"]["status"].ToString() is JobStatuses.Queued or JobStatuses.Working);
                     }
 
                     // Wait for the timer
-                    await timer.WaitForNextTickAsync();
+                    //await timer.WaitForNextTickAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogInformation("Error deleting tickets: " + ex.Message);
+            }
+        }
+
+        public async Task RestoreTicketsById(ILogger logger)
+        {
+            try
+            {
+                (string, int) ticketIds = GetListOfIdsFromExcel();
+                PeriodicTimer timer = new(TimeSpan.FromSeconds(5));
+                HttpClient client = httpClientFactory.CreateClient("ZD");
+
+                var idsArray = ticketIds.Item1.Split(',');
+
+                int numLoops = (int)Math.Ceiling((double)ticketIds.Item2 / 100);
+
+                for (int i = 0; i < numLoops; i++)
+                {
+                    var currentChunk = idsArray.Skip(i * 100).Take(100);
+                    string idsChunk = string.Join(",", currentChunk);
+                    string restoreQuery = new("deleted_tickets/restore_many?ids=" + idsChunk);
+                    HttpResponseMessage response = await client.PutAsync(restoreQuery, null);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        string result = await response.Content.ReadAsStringAsync();
+                    }
+
+                    // Wait for the timer
+                    //await timer.WaitForNextTickAsync();
                 }
             }
             catch (Exception ex)

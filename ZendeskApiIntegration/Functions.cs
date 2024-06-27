@@ -27,6 +27,14 @@ namespace ZendeskApiIntegration
             return new OkObjectResult("Welcome to Azure Functions!");
         }
 
+        [Function("BulkRestoreTickets")]
+        public async Task<IActionResult> BulkRestoreTickets([HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequest req)
+        {
+            log.LogInformation("C# HTTP trigger function processed a request.");
+            _ = await ZendeskApiUtilities.ProcessBulkRestoration(dataLayer, config, zendeskClientService, log);
+            return new OkObjectResult("Welcome to Azure Functions!");
+        }
+
         //[Function("BulkMoveTickets")]
         //public async Task<IActionResult> BulkMoveTickets([TimerTrigger("*/5 * * * *", RunOnStartup = true, UseMonitor = true)] TimerInfo timer)
         //{
